@@ -1,10 +1,27 @@
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { powerApps } from "@microsoft/power-apps-vite/plugin"
 import { fileURLToPath, URL } from 'node:url'
 
+const validateEnvPlugin = (): Plugin => ({
+  name: 'validate-env',
+  buildStart() {
+    const required: string[] = [
+      'VITE_APPINSIGHTS_CS',
+      'VITE_TENANT_ID',
+      'VITE_TEAMS_CONTENT_URL',
+      'VITE_ORG_URL',
+    ];
+    const missing = required.filter(k => !process.env[k]);
+    if (missing.length > 0) {
+      this.warn(`Missing environment variables: ${missing.join(', ')}`);
+    }
+  },
+});
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), powerApps()],
+  plugins: [react(), powerApps(), validateEnvPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
   },

@@ -9,10 +9,16 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "prepare": "husky || true",
     "deploy:app": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-app.ps1",
     "deploy:schema": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-schema.ps1 -Action export",
     "add-columns": "powershell -ExecutionPolicy Bypass -File ./scripts/add-columns.ps1",
     "regen": "pac modelbuilder build --outputDirectory ./src/generated"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@microsoft/applicationinsights-web": "3.4.3",
@@ -34,6 +40,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
