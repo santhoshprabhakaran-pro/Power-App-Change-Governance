@@ -1,0 +1,131 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedcommondataserviceforapps_26830"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "reminderDaysBefore": {
+          "defaultValue": 2,
+          "type": "Int",
+          "metadata": {
+            "description": "How many days before change start to fire the pre-change reminder"
+          }
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2025-01-01T05:00:00Z",
+            "timeZone": "UTC"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Compute_Reminder_Window": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": {
+            "windowStart": "@addDays(utcNow(), parameters('reminderDaysBefore'))",
+            "windowEnd": "@addDays(utcNow(), add(parameters('reminderDaysBefore'), 1))"
+          }
+        },
+        "Get_Upcoming_Changes": {
+          "runAfter": {
+            "Compute_Reminder_Window": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords"
+            },
+            "parameters": {
+              "entityName": "cgmp_changes",
+              "$filter": "cgmp_status eq 100000003 and cgmp_starttime ge @{outputs('Compute_Reminder_Window')?['windowStart']} and cgmp_starttime lt @{outputs('Compute_Reminder_Window')?['windowEnd']}",
+              "$select": "cgmp_changeid,cgmp_changenumber,cgmp_title,cgmp_starttime,cgmp_endtime,cgmp_primaryismid,cgmp_facility,cgmp_region,cgmp_risklevel"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "For_Each_Upcoming_Change": {
+          "foreach": "@outputs('Get_Upcoming_Changes')?['body/value']",
+          "actions": {
+            "Get_Project_ISMs": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords"
+                },
+                "parameters": {
+                  "entityName": "cgmp_projects",
+                  "$filter": "contains(cgmp_projectids, '@{items('For_Each_Upcoming_Change')?['cgmp_changeid']}')",
+                  "$select": "cgmp_primaryismid"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Create_PreChange_Notification": {
+              "runAfter": {
+                "Get_Project_ISMs": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord"
+                },
+                "parameters": {
+                  "entityName": "cgmp_notifications",
+                  "item/cgmp_title": "Upcoming Change Window in @{parameters('reminderDaysBefore')} days",
+                  "item/cgmp_message": "Change @{items('For_Each_Upcoming_Change')?['cgmp_changenumber']} — '@{items('For_Each_Upcoming_Change')?['cgmp_title']}' is scheduled to start in @{parameters('reminderDaysBefore')} days (@{items('For_Each_Upcoming_Change')?['cgmp_starttime']}). Please ensure all preparations are complete.",
+                  "item/cgmp_category": 100000000,
+                  "item/cgmp_priority": 100000001,
+                  "item/cgmp_isread": false,
+                  "item/cgmp_isdismissed": false,
+                  "item/cgmp_relatedchangeid": "@{items('For_Each_Upcoming_Change')?['cgmp_changeid']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_Upcoming_Changes": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

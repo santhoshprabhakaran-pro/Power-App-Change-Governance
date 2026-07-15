@@ -1,0 +1,21 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": "Change Approval Required" },
+    { "type": "FactSet", "facts": [
+      { "title": "Change #", "value": "${changeNumber}" },
+      { "title": "Title", "value": "${title}" },
+      { "title": "Risk Level", "value": "${riskLevel}" },
+      { "title": "Start Time", "value": "${startTime}" },
+      { "title": "Requested By", "value": "${requestedBy}" }
+    ]},
+    { "type": "TextBlock", "text": "${description}", "wrap": true }
+  ],
+  "actions": [
+    { "type": "Action.Submit", "title": "Approve", "style": "positive", "data": { "action": "approve", "changeId": "${changeId}" } },
+    { "type": "Action.Submit", "title": "Reject", "style": "destructive", "data": { "action": "reject", "changeId": "${changeId}" } },
+    { "type": "Action.OpenUrl", "title": "View in App", "url": "${deepLinkUrl}" }
+  ]
+}

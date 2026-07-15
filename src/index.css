@@ -1,0 +1,143 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --primary: #0078D4;
+  --primary-dark: #005A9E;
+  --primary-hover: #106EBE;
+  --primary-light: #EFF6FC;
+  --primary-rgb: 0,120,212;
+  --success: #107C10;
+  --success-light: #DFF6DD;
+  --warning: #FFB900;
+  --warning-light: #FFF4CE;
+  --danger: #D13438;
+  --danger-light: #FDE7E9;
+  --danger-rgb: 209,52,56;
+  --purple: #8764B8;
+  --purple-light: #F0EBF8;
+  --cyan: #00BCF2;
+  --cyan-light: #E3F9FF;
+  --orange: #FF8C00;
+  --orange-light: #FFF4CE;
+  --teal: #038387;
+  --teal-light: #E3F8F8;
+  --bg: #F3F2F1;
+  --surface: #FFFFFF;
+  --surface-alt: #FAFAF9;
+  --surface-hover: #F0EFEE;
+  --border: #E1DFDD;
+  --border-light: #F3F2F1;
+  --text-primary: #201F1E;
+  --text-secondary: #605E5C;
+  --text-tertiary: #A19F9D;
+  --sidebar-bg: #1B1A19;
+  --sidebar-text: #C8C6C4;
+  --sidebar-text-hover: #FFFFFF;
+  --sidebar-active-bg: #323130;
+  --sidebar-hover-bg: #252423;
+  --sidebar-section: #6E6E6E;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.10);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.14);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.16);
+  --shadow-xl: 0 16px 40px rgba(0,0,0,0.20);
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  /* Chart colors — use CSS vars so dark mode can override */
+  --chart-blue: #0078D4;
+  --chart-green: #107C10;
+  --chart-red: #D13438;
+  --chart-orange: #FF8C00;
+  --chart-purple: #8764B8;
+  --chart-teal: #038387;
+  /* Numeric chart palette (10 steps) */
+  --chart-1: #0078D4;
+  --chart-2: #107C10;
+  --chart-3: #D13438;
+  --chart-4: #D81B60;
+  --chart-5: #FF8C00;
+  --chart-6: #7E57C2;
+  --chart-7: #038387;
+  --chart-8: #00897B;
+  --chart-9: #00BC64;
+  --chart-10: #757575;
+  --skeleton-base: #E1DFDD;
+  --skeleton-shine: #F0EFEE;
+  --page-transition: 180ms ease;
+  /* Tinted surface variants for highlighted backgrounds */
+  --page-bg: #F3F2F1;
+  --primary-pale: rgba(0,120,212,0.08);
+  --primary-faint: rgba(0,120,212,0.04);
+  --primary-alpha: rgba(0,120,212,0.15);
+  --success-faint: rgba(16,124,16,0.08);
+  --danger-faint: rgba(209,52,56,0.08);
+  --border-danger: rgba(220, 53, 69, 0.25);
+  --warning-faint: rgba(255,185,0,0.08);
+  /* Border dark variant for toggle/input track */
+  --border-dark: #C8C6C4;
+  /* Z-index scale */
+  --z-dropdown: 200;
+  --z-overlay: 800;
+  --z-panel: 900;
+  --z-dialog: 1000;
+  --z-toast: 9999;
+}
+
+[data-theme="dark"] {
+  --bg: #1B1A19;
+  --surface: #252423;
+  --surface-alt: #2D2C2B;
+  --surface-hover: #323130;
+  --border: #3B3A39;
+  --border-light: #323130;
+  --border-dark: #484644;
+  --text-primary: #FFFFFF;
+  --text-secondary: #C8C6C4;
+  --text-tertiary: #8A8886;
+  --primary-light: #1F3D5C;
+  --success-light: #1A3B1A;
+  --danger-light: #3D1618;
+  --warning-light: #3D3000;
+  --purple-light: #2B2040;
+  --cyan-light: #1A3540;
+  --orange-light: #3D2A00;
+  --teal-light: #1A3030;
+  /* Page bg same as main bg in dark */
+  --page-bg: #1B1A19;
+  --primary-pale: rgba(77,166,255,0.12);
+  --primary-faint: rgba(77,166,255,0.06);
+  --primary-alpha: rgba(77,166,255,0.20);
+  --success-faint: rgba(76,175,80,0.12);
+  --danger-faint: rgba(239,83,80,0.12);
+  --border-danger: rgba(255, 100, 100, 0.30);
+  --warning-faint: rgba(255,167,38,0.12);
+  /* Stronger shadows for dark surfaces */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.35);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.45);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.50);
+  --shadow-xl: 0 16px 40px rgba(0,0,0,0.60);
+  /* Skeleton */
+  --skeleton-base: #3B3A39;
+  --skeleton-shine: #484644;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C8C6C4; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #A19F9D; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #484644; }

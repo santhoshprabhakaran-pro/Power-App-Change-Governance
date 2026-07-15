@@ -1,0 +1,132 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedcommondataserviceforapps_26830"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "slaHours": {
+          "defaultValue": 24,
+          "type": "Int",
+          "metadata": {
+            "description": "Hours in UAT Updates status before escalation triggers"
+          }
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2025-01-01T07:00:00Z",
+            "timeZone": "UTC"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Compute_SLA_Cutoff": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@addHours(utcNow(), mul(parameters('slaHours'), -1))"
+        },
+        "Get_Overdue_UAT_Changes": {
+          "runAfter": {
+            "Compute_SLA_Cutoff": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords"
+            },
+            "parameters": {
+              "entityName": "cgmp_changes",
+              "$filter": "cgmp_status eq 100000004 and modifiedon lt @{outputs('Compute_SLA_Cutoff')}",
+              "$select": "cgmp_changeid,cgmp_changenumber,cgmp_title,cgmp_facility,cgmp_region,modifiedon"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "For_Each_Overdue_Change": {
+          "foreach": "@outputs('Get_Overdue_UAT_Changes')?['body/value']",
+          "actions": {
+            "Create_Escalation_Notification": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord"
+                },
+                "parameters": {
+                  "entityName": "cgmp_notifications",
+                  "item/cgmp_title": "UAT Sign-Off Overdue — Escalation Required",
+                  "item/cgmp_message": "ESCALATION: Change @{items('For_Each_Overdue_Change')?['cgmp_changenumber']} — '@{items('For_Each_Overdue_Change')?['cgmp_title']}' has been in UAT Updates status for more than @{parameters('slaHours')} hours. Immediate action required.",
+                  "item/cgmp_category": 100000002,
+                  "item/cgmp_priority": 100000000,
+                  "item/cgmp_isread": false,
+                  "item/cgmp_isdismissed": false,
+                  "item/cgmp_relatedchangeid": "@{items('For_Each_Overdue_Change')?['cgmp_changeid']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Create_Escalation_Task": {
+              "runAfter": {
+                "Create_Escalation_Notification": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord"
+                },
+                "parameters": {
+                  "entityName": "cgmp_tasks",
+                  "item/cgmp_title": "Escalate UAT sign-off for @{items('For_Each_Overdue_Change')?['cgmp_changenumber']}",
+                  "item/cgmp_type": 100000005,
+                  "item/cgmp_priority": 100000000,
+                  "item/cgmp_relatedchangeid": "@{items('For_Each_Overdue_Change')?['cgmp_changeid']}",
+                  "item/cgmp_iscompleted": false,
+                  "item/cgmp_duedate": "@utcNow()"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_Overdue_UAT_Changes": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

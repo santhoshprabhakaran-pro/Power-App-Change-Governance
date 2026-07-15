@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>0</isdefault>
+    <savedqueryid>{423a64ea-f00f-4977-80bf-91b80dd641d3}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="cgmp_auditlogname" select="1" icon="1" preview="1">
+        <row name="result" id="cgmp_auditlogid">
+          <cell name="cgmp_auditlogname" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="cgmp_auditlog">
+          <attribute name="cgmp_auditlogid" />
+          <attribute name="cgmp_auditlogname" />
+          <attribute name="createdon" />
+          <order attribute="cgmp_auditlogname" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="1" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Inactive Audit Logs" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

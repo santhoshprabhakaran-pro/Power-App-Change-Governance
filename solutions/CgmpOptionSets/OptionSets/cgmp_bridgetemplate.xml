@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="cgmp_bridgetemplate" localizedName="Bridge Template" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Bridge Template" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="100000000" IsHidden="0">
+      <labels>
+        <label description="Network" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000001" IsHidden="0">
+      <labels>
+        <label description="Citrix" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000002" IsHidden="0">
+      <labels>
+        <label description="VMware" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000003" IsHidden="0">
+      <labels>
+        <label description="Firewall" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000004" IsHidden="0">
+      <labels>
+        <label description="Patch Activities" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000005" IsHidden="0">
+      <labels>
+        <label description="Custom" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

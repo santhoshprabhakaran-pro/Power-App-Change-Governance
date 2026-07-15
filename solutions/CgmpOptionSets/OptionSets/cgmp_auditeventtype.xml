@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="cgmp_auditeventtype" localizedName="Audit Event Type" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Audit Event Type" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="100000000" IsHidden="0">
+      <labels>
+        <label description="Login" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000001" IsHidden="0">
+      <labels>
+        <label description="Logout" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000002" IsHidden="0">
+      <labels>
+        <label description="Change Created" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000003" IsHidden="0">
+      <labels>
+        <label description="Change Updated" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000004" IsHidden="0">
+      <labels>
+        <label description="Change Reviewed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000005" IsHidden="0">
+      <labels>
+        <label description="Change Released" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000006" IsHidden="0">
+      <labels>
+        <label description="Change Locked" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000007" IsHidden="0">
+      <labels>
+        <label description="Change Completed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000008" IsHidden="0">
+      <labels>
+        <label description="Change Failed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000009" IsHidden="0">
+      <labels>
+        <label description="Change Closed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000010" IsHidden="0">
+      <labels>
+        <label description="UAT Updated" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000011" IsHidden="0">
+      <labels>
+        <label description="Bridge Created" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000012" IsHidden="0">
+      <labels>
+        <label description="Bridge Started" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000013" IsHidden="0">
+      <labels>
+        <label description="Bridge Completed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000014" IsHidden="0">
+      <labels>
+        <label description="PIR Added" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000015" IsHidden="0">
+      <labels>
+        <label description="Project Updated" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000016" IsHidden="0">
+      <labels>
+        <label description="Notification Sent" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000017" IsHidden="0">
+      <labels>
+        <label description="Escalation Triggered" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000018" IsHidden="0">
+      <labels>
+        <label description="Settings Changed" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

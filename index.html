@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Global Change Governance & Impact Management Platform" />
+    <meta name="theme-color" content="#0078D4" />
+    <!-- CSP: 'unsafe-inline' is retained because the Power Apps Vite plugin (@microsoft/power-apps-vite)
+         injects inline scripts at runtime that cannot be nonce-controlled at build time.
+         'unsafe-eval' has been removed — neither the App Insights SDK nor the Power Apps SDK
+         production bundle requires eval() in a strict production build. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.dynamics.com https://*.microsoft.com https://*.powerplatform.com https://*.powerbi.com; script-src 'self' 'unsafe-inline' https://*.microsoft.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.dynamics.com https://*.microsoft.com https://*.applicationinsights.azure.com https://dc.services.visualstudio.com https://*.powerplatform.com https://app.powerbi.com; frame-src https://app.powerbi.com https://*.powerbi.com https://*.microsoft.com https://apps.powerapps.com; font-src 'self' data:;">
+    <title>Change Governance Platform</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

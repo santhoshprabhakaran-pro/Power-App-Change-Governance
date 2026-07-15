@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="cgmp_auditentitytype" localizedName="Audit Entity Type" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Audit Entity Type" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="100000000" IsHidden="0">
+      <labels>
+        <label description="Change" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000001" IsHidden="0">
+      <labels>
+        <label description="Project" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000002" IsHidden="0">
+      <labels>
+        <label description="Bridge" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000003" IsHidden="0">
+      <labels>
+        <label description="User" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000004" IsHidden="0">
+      <labels>
+        <label description="Notification" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000005" IsHidden="0">
+      <labels>
+        <label description="Settings" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

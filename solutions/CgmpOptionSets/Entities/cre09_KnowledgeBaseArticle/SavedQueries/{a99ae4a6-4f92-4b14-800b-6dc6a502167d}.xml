@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{a99ae4a6-4f92-4b14-800b-6dc6a502167d}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="cre09_cgmp_title" select="1" icon="1" preview="1">
+        <row name="result" id="cre09_knowledgebasearticleid">
+          <cell name="cre09_cgmp_title" width="300" />
+          <cell name="cre09_cgmp_category" width="150" />
+          <cell name="cre09_cgmp_content" width="150" />
+          <cell name="cre09_cgmp_tags" width="150" />
+          <cell name="cre09_cgmp_authorname" width="150" />
+          <cell name="cre09_cgmp_viewcount" width="150" />
+          <cell name="cre09_cgmp_ispublished" width="150" />
+          <cell name="cre09_cgmp_relatedchangeid" width="150" />
+          <cell name="cre09_cgmp_relatedbridgeid" width="150" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="cre09_knowledgebasearticle">
+          <attribute name="cre09_knowledgebasearticleid" />
+          <attribute name="cre09_cgmp_title" />
+          <attribute name="createdon" />
+          <order attribute="cre09_cgmp_title" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+          <attribute name="cre09_cgmp_category" />
+          <attribute name="cre09_cgmp_content" />
+          <attribute name="cre09_cgmp_tags" />
+          <attribute name="cre09_cgmp_authorname" />
+          <attribute name="cre09_cgmp_viewcount" />
+          <attribute name="cre09_cgmp_ispublished" />
+          <attribute name="cre09_cgmp_relatedchangeid" />
+          <attribute name="cre09_cgmp_relatedbridgeid" />
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Active Knowledge Base Articles" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

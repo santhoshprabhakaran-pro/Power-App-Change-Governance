@@ -1,0 +1,69 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "2.0.0",
+  "id": "{{APP_ID}}",
+  "developer": {
+    "name": "Accenture",
+    "websiteUrl": "https://apps.powerapps.com",
+    "privacyUrl": "https://privacy.microsoft.com",
+    "termsOfUseUrl": "https://www.microsoft.com/legal"
+  },
+  "name": {
+    "short": "Change Governance",
+    "full": "Global Change Governance & Impact Management Platform"
+  },
+  "description": {
+    "short": "Manage change governance workflows",
+    "full": "Enterprise change governance, bridge execution, and impact management for IT operations teams."
+  },
+  "_envConfig": "Per-environment fields to update before packaging: staticTabs[*].contentUrl and staticTabs[*].websiteUrl (Power Apps app ID in the path), validDomains (tenant-specific *.dynamics.com subdomain), webApplicationInfo.id (AAD app client ID). The tenantId query parameter in contentUrl must match the target tenant.",
+  "icons": {
+    "color": "icon-color.png",
+    "outline": "icon-outline.png"
+  },
+  "accentColor": "#0078D4",
+  "staticTabs": [
+    {
+      "entityId": "dashboard",
+      "name": "Dashboard",
+      "contentUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "websiteUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "scopes": ["personal", "team"]
+    },
+    {
+      "entityId": "pmo-workspace",
+      "name": "PMO Workspace",
+      "contentUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}#pmo",
+      "websiteUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "scopes": ["personal", "team"]
+    },
+    {
+      "entityId": "giicc-center",
+      "name": "GIICC Center",
+      "contentUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}#giicc",
+      "websiteUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "scopes": ["personal", "team"]
+    },
+    {
+      "entityId": "itops-workspace",
+      "name": "IT Ops",
+      "contentUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}#itops",
+      "websiteUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "scopes": ["personal", "team"]
+    },
+    {
+      "entityId": "ism",
+      "name": "ISM Workspace",
+      "contentUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}#ism",
+      "websiteUrl": "https://apps.powerapps.com/play/e/{{ENV_ID}}/app/{{APP_ID}}?tenantId={{TENANT_ID}}",
+      "scopes": ["team", "personal"]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["apps.powerapps.com", "*.dynamics.com", "*.powerbi.com"],
+  "webApplicationInfo": {
+    "id": "{{APP_ID}}",
+    "resource": "https://api.powerapps.com"
+  }
+}

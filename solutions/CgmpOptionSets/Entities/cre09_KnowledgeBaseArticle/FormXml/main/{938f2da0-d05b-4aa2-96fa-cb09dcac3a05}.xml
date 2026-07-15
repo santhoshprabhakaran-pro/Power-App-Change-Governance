@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<forms xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <systemform>
+    <formid>{938f2da0-d05b-4aa2-96fa-cb09dcac3a05}</formid>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <FormPresentation>1</FormPresentation>
+    <FormActivationState>1</FormActivationState>
+    <form>
+      <tabs>
+        <tab verticallayout="true" id="{9455B10D-F55B-4406-BCEB-70D297903130}" IsUserDefined="1">
+          <labels>
+            <label description="General" languagecode="1033" />
+          </labels>
+          <columns>
+            <column width="100%">
+              <sections>
+                <section showlabel="false" showbar="false" IsUserDefined="0" id="{0B61DD9A-7142-48BF-B897-2B9B412E3302}">
+                  <labels>
+                    <label description="General" languagecode="1033" />
+                  </labels>
+                  <rows>
+                    <row>
+                      <cell id="{0AE2EAEE-696B-474F-B522-3FD1164BDA5B}">
+                        <labels>
+                          <label description="cgmp_title" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_title" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="cre09_cgmp_title" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{4903459A-27EC-4289-B79F-CB552464CF4B}">
+                        <labels>
+                          <label description="Owner" languagecode="1033" />
+                        </labels>
+                        <control id="ownerid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="ownerid" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{10ffdc3e-64f0-42ab-8c52-bc40695a3a56}">
+                        <labels>
+                          <label description="cgmp_category" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_category" classid="{3ef39988-22bb-4f0b-bbbe-64b5a3748aee}" datafieldname="cre09_cgmp_category" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{bb237242-2120-4da5-b22a-3500037f1b3c}">
+                        <labels>
+                          <label description="cgmp_content" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_content" classid="{4273edbd-ac1d-40d3-9fb2-095c621b552d}" datafieldname="cre09_cgmp_content" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{d70a52a2-3a95-4752-a910-5e38e861f97e}">
+                        <labels>
+                          <label description="cgmp_tags" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_tags" classid="{4273edbd-ac1d-40d3-9fb2-095c621b552d}" datafieldname="cre09_cgmp_tags" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{b39ee8bb-fa9f-40b0-aa76-1021b517b449}">
+                        <labels>
+                          <label description="cgmp_authorname" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_authorname" classid="{4273edbd-ac1d-40d3-9fb2-095c621b552d}" datafieldname="cre09_cgmp_authorname" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{a4268e14-e71c-48c0-ba68-058a3af86ec7}">
+                        <labels>
+                          <label description="cgmp_viewcount" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_viewcount" classid="{c6d124ca-7eda-4a60-aea9-7fb8d318b68f}" datafieldname="cre09_cgmp_viewcount" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{fe784cf0-c654-47fb-966b-94713060cd3c}">
+                        <labels>
+                          <label description="cgmp_ispublished" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_ispublished" classid="{67fac785-cd58-4f9f-abb3-4b7ddc6ed5ed}" datafieldname="cre09_cgmp_ispublished" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{3209fa72-fdb9-4093-b3a4-9a95c768a179}">
+                        <labels>
+                          <label description="cgmp_relatedchangeid" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_relatedchangeid" classid="{4273edbd-ac1d-40d3-9fb2-095c621b552d}" datafieldname="cre09_cgmp_relatedchangeid" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{cce45ac5-011b-4709-981b-b1ed11094cb1}">
+                        <labels>
+                          <label description="cgmp_relatedbridgeid" languagecode="1033" />
+                        </labels>
+                        <control id="cre09_cgmp_relatedbridgeid" classid="{4273edbd-ac1d-40d3-9fb2-095c621b552d}" datafieldname="cre09_cgmp_relatedbridgeid" />
+                      </cell>
+                    </row>
+                  </rows>
+                </section>
+              </sections>
+            </column>
+          </columns>
+        </tab>
+      </tabs>
+    </form>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>1</CanBeDeleted>
+    <LocalizedNames>
+      <LocalizedName description="Information" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="A form for this entity." languagecode="1033" />
+    </Descriptions>
+  </systemform>
+</forms>

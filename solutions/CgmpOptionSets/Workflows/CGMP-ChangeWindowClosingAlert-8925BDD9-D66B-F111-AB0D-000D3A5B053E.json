@@ -1,0 +1,134 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedcommondataserviceforapps_26830"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "alertWindowMinutes": {
+          "defaultValue": 60,
+          "type": "Int",
+          "metadata": {
+            "description": "Minutes before end time to fire the closing alert"
+          }
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 30,
+            "timeZone": "UTC",
+            "startTime": "2025-01-01T00:00:00Z"
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 30,
+            "startTime": "2025-01-01T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "metadata": {
+            "operationMetadataId": "7ccfb6f2-a0bc-485d-824a-ed2de4a7ec59"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Compute_Alert_Window": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "77148cd3-b2be-4a78-b464-d48783c115a0"
+          },
+          "type": "Compose",
+          "inputs": {
+            "alertAfter": "@utcNow()",
+            "alertBefore": "@addMinutes(utcNow(), parameters('alertWindowMinutes'))"
+          }
+        },
+        "Get_In_Progress_Changes_Closing_Soon": {
+          "runAfter": {
+            "Compute_Alert_Window": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "d668144c-4263-4389-8abf-1b9f355058e9"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "cgmp_changes",
+              "$filter": "cgmp_status eq 100000006 and cgmp_endtime ge @{outputs('Compute_Alert_Window')?['alertAfter']} and cgmp_endtime le @{outputs('Compute_Alert_Window')?['alertBefore']}",
+              "$select": "cgmp_changeid,cgmp_changenumber,cgmp_title,cgmp_endtime,cgmp_facility"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "For_Each_Closing_Change": {
+          "foreach": "@outputs('Get_In_Progress_Changes_Closing_Soon')?['body/value']",
+          "actions": {
+            "Create_Closing_Notification": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "dea292dd-03eb-4249-a707-5e72c9487117"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "cgmp_notifications",
+                  "item/cgmp_title": "Change Window Closing in @{parameters('alertWindowMinutes')} minutes",
+                  "item/cgmp_message": "Change @{items('For_Each_Closing_Change')?['cgmp_changenumber']} — '@{items('For_Each_Closing_Change')?['cgmp_title']}' is scheduled to end at @{items('For_Each_Closing_Change')?['cgmp_endtime']}. Please ensure all activities are completing on schedule.",
+                  "item/cgmp_category": 100000004,
+                  "item/cgmp_priority": 100000000,
+                  "item/cgmp_isread": false,
+                  "item/cgmp_isdismissed": false,
+                  "item/cgmp_relatedchangeid": "@{items('For_Each_Closing_Change')?['cgmp_changeid']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_In_Progress_Changes_Closing_Soon": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "fb3513ae-9e2d-48ef-8f77-4eccd36646ea"
+          },
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

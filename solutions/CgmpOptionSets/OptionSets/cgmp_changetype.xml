@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="cgmp_changetype" localizedName="Change Type" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Change Type" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="100000000" IsHidden="0">
+      <labels>
+        <label description="Standard" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000001" IsHidden="0">
+      <labels>
+        <label description="Emergency" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000002" IsHidden="0">
+      <labels>
+        <label description="Normal" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="100000003" IsHidden="0">
+      <labels>
+        <label description="Expedited" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

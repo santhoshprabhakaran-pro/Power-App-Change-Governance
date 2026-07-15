@@ -1,0 +1,131 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedcommondataserviceforapps_26830"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "reminderDaysBefore": {
+          "defaultValue": 3,
+          "type": "Int",
+          "metadata": {
+            "description": "Days before change start to send UAT assignment reminder"
+          }
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "timeZone": "UTC",
+            "startTime": "2025-01-01T06:00:00Z"
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2025-01-01T06:00:00Z",
+            "timeZone": "UTC"
+          },
+          "metadata": {
+            "operationMetadataId": "trigger-uat-missing"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Get_Released_Changes_With_No_UAT_Users": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "list-changes-no-uat"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "cgmp_changes",
+              "$filter": "cgmp_status eq 100000003 and (cgmp_uatusers eq null or cgmp_uatusers eq '[]')",
+              "$select": "cgmp_changeid,cgmp_changenumber,cgmp_title,cgmp_starttime,cgmp_facility,cgmp_region"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "For_Each_Change": {
+          "foreach": "@outputs('Get_Released_Changes_With_No_UAT_Users')?['body/value']",
+          "actions": {
+            "Create_UAT_Missing_Notification": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "a3913e22-48da-4684-8b55-2937fbf64bc1"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "CreateRecord",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "cgmp_notifications",
+                  "item/cgmp_title": "UAT Users Required",
+                  "item/cgmp_message": "Change @{items('For_Each_Change')?['cgmp_changenumber']} — '@{items('For_Each_Change')?['cgmp_title']}' is Released but has no UAT users assigned. Please assign UAT users before the change window opens.",
+                  "item/cgmp_category": 100000001,
+                  "item/cgmp_priority": 100000000,
+                  "item/cgmp_isread": false,
+                  "item/cgmp_isdismissed": false,
+                  "item/cgmp_relatedchangeid": "@{items('For_Each_Change')?['cgmp_changeid']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_Released_Changes_With_No_UAT_Users": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "1b3d0a65-c3b7-4d46-b60d-6c41f301382a"
+          },
+          "type": "Foreach"
+        },
+        "Log_Run_Complete": {
+          "runAfter": {
+            "For_Each_Change": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "1afe0487-5d02-4a4b-849e-81acad8dda70"
+          },
+          "type": "Compose",
+          "inputs": "UAT User Missing Reminder completed. Processed @{length(outputs('Get_Released_Changes_With_No_UAT_Users')?['body/value'])} changes."
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

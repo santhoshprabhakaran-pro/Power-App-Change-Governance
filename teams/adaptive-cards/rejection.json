@@ -1,0 +1,16 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": "Change Request Rejected", "color": "Attention" },
+    { "type": "FactSet", "facts": [
+      { "title": "Change #", "value": "${changeNumber}" },
+      { "title": "Rejected By", "value": "${rejectedBy}" },
+      { "title": "Reason", "value": "${rejectionReason}" }
+    ]}
+  ],
+  "actions": [
+    { "type": "Action.OpenUrl", "title": "View in App", "url": "${deepLinkUrl}" }
+  ]
+}

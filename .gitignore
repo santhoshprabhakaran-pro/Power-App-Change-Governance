@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Solution zip artifacts — only the unpacked source is committed
+solutions/*.zip
+
+# C# generated entity files (not used by TypeScript build)
+src/generated/Entities/
+
+# Legacy schema doc (replaced by DEPLOYMENT.md)
+DATAVERSE_SCHEMA_CHANGES.md
+
+# Teams manifest (generated from manifest.template.json — see Scripts/Generate-TeamsManifest.ps1)
+teams/manifest.json
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "appId": "c1f14cf8-797a-48cf-b56f-12943eb06bf4",
+  "appDisplayName": "Change Governance App V1_0",
+  "region": "prod",
+  "appType": "CodeApp",
+  "environmentId": "5b9db983-0709-e578-ba8e-29a88812c217",
+  "description": " ",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "userprofiles": {
+          "entitySetName": "cgmp_userprofiles",
+          "logicalName": "cgmp_userprofile",
+          "isHidden": false
+        },
+        "userfavorites": {
+          "entitySetName": "cgmp_userfavorites",
+          "logicalName": "cgmp_userfavorite",
+          "isHidden": false
+        },
+        "tasks": {
+          "entitySetName": "cgmp_tasks",
+          "logicalName": "cgmp_task",
+          "isHidden": false
+        },
+        "projects": {
+          "entitySetName": "cgmp_projects",
+          "logicalName": "cgmp_project",
+          "isHidden": false
+        },
+        "notifications": {
+          "entitySetName": "cgmp_notifications",
+          "logicalName": "cgmp_notification",
+          "isHidden": false
+        },
+        "changes": {
+          "entitySetName": "cgmp_changes",
+          "logicalName": "cgmp_change",
+          "isHidden": false
+        },
+        "bridges": {
+          "entitySetName": "cgmp_bridges",
+          "logicalName": "cgmp_bridge",
+          "isHidden": false
+        },
+        "auditlogs": {
+          "entitySetName": "cgmp_auditlogs",
+          "logicalName": "cgmp_auditlog",
+          "isHidden": false
+        },
+        "knowledgebasearticles": {
+          "entitySetName": "cre09_knowledgebasearticles",
+          "logicalName": "cre09_knowledgebasearticle",
+          "isHidden": false
+        },
+        "users": {
+          "entitySetName": "systemusers",
+          "logicalName": "systemuser",
+          "isHidden": false
+        },
+        "attachments": {
+          "entitySetName": "annotations",
+          "logicalName": "annotation",
+          "isHidden": false
+        },
+        "notificationrules": {
+          "entitySetName": "cgmp_notificationrules",
+          "logicalName": "cgmp_notificationrule",
+          "isHidden": false
+        },
+        "blackoutperiods": {
+          "entitySetName": "cgmp_blackoutperiods",
+          "logicalName": "cgmp_blackoutperiod",
+          "isHidden": false
+        },
+        "changetemplates": {
+          "entitySetName": "cgmp_changetemplates",
+          "logicalName": "cgmp_changetemplate",
+          "isHidden": false
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}

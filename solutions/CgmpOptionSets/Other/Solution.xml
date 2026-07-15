@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.26061.153" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26061.153" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26061.00153">
+  <SolutionManifest>
+    <UniqueName>CgmpOptionSets</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Change Governance Tool" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions />
+    <Version>1.0.0.1</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>Santhosh_Prabhakaran</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Santhosh Prabhakaran" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions>
+        <Description description="ISMT Chennai" languagecode="1033" />
+      </Descriptions>
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>change</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>99999</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+        <Address>
+          <AddressNumber>2</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="1" schemaName="cgmp_auditlog" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_blackoutperiod" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_bridge" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_change" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_changetemplate" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_notification" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_notificationrule" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_project" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_task" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_userfavorite" behavior="0" />
+      <RootComponent type="1" schemaName="cgmp_userprofile" behavior="0" />
+      <RootComponent type="1" schemaName="cre09_knowledgebasearticle" behavior="0" />
+      <RootComponent type="29" id="{389d19d2-d66b-f111-ab0d-000d3a5b053e}" behavior="0" />
+      <RootComponent type="29" id="{595077c0-d66b-f111-ab0d-000d3a5b053e}" behavior="0" />
+      <RootComponent type="29" id="{8925bdd9-d66b-f111-ab0d-000d3a5b053e}" behavior="0" />
+      <RootComponent type="29" id="{cbfebfca-d66b-f111-ab0d-000d3a5b053e}" behavior="0" />
+      <RootComponent type="300" schemaName="change_changegovernanceappv10_37f2c" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_auditentitytype" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_auditeventtype" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_bridgestatus" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_bridgetemplate" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_changecategory" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_changestatus" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_changetype" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_impactlevel" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_notificationcategory" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_notificationpreference" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_notificationpriority" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_projectstatus" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_risklevel" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_taskpriority" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_tasktype" behavior="0" />
+      <RootComponent type="9" schemaName="cgmp_userrole" behavior="0" />
+      <RootComponent type="9" schemaName="change_categorychoices" behavior="0" />
+    </RootComponents>
+    <MissingDependencies>
+      <MissingDependency>
+        <Required type="connectionreference" displayName="new_sharedcommondataserviceforapps_26830" solution="Active" id.connectionreferencelogicalname="new_sharedcommondataserviceforapps_26830" />
+        <Dependent type="29" displayName="CGMP - UAT Sign-Off Escalation" id="{389d19d2-d66b-f111-ab0d-000d3a5b053e}" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="connectionreference" displayName="new_sharedcommondataserviceforapps_26830" solution="Active" id.connectionreferencelogicalname="new_sharedcommondataserviceforapps_26830" />
+        <Dependent type="29" displayName="CGMP - Pre-Change Reminder" id="{595077c0-d66b-f111-ab0d-000d3a5b053e}" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="connectionreference" displayName="new_sharedcommondataserviceforapps_26830" solution="Active" id.connectionreferencelogicalname="new_sharedcommondataserviceforapps_26830" />
+        <Dependent type="29" displayName="CGMP - Change Window Closing Alert" id="{8925bdd9-d66b-f111-ab0d-000d3a5b053e}" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="connectionreference" displayName="new_sharedcommondataserviceforapps_26830" solution="Active" id.connectionreferencelogicalname="new_sharedcommondataserviceforapps_26830" />
+        <Dependent type="29" displayName="CGMP - UAT User Missing Reminder" id="{cbfebfca-d66b-f111-ab0d-000d3a5b053e}" />
+      </MissingDependency>
+    </MissingDependencies>
+  </SolutionManifest>
+</ImportExportXml>

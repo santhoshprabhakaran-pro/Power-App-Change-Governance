@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>change_changegovernanceappv10_37f2c</Name>
+  <AppVersion>2026-07-07T15:32:48Z</AppVersion>
+  <Status>Ready</Status>
+  <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
+  <MinClientVersion>0.0.0.0</MinClientVersion>
+  <Tags>{}</Tags>
+  <IsCdsUpgraded>0</IsCdsUpgraded>
+  <GalleryItemId xsi:nil="true"></GalleryItemId>
+  <BackgroundColor>RGBA(255,255,255,1)</BackgroundColor>
+  <DisplayName>Change Governance App V1_0</DisplayName>
+  <Description></Description>
+  <CommitMessage xsi:nil="true"></CommitMessage>
+  <Publisher xsi:nil="true"></Publisher>
+  <AuthorizationReferences>[]</AuthorizationReferences>
+  <ConnectionReferences>{}</ConnectionReferences>
+  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"userprofiles":{"entitySetName":"cgmp_userprofiles","logicalName":"cgmp_userprofile"},"userfavorites":{"entitySetName":"cgmp_userfavorites","logicalName":"cgmp_userfavorite"},"tasks":{"entitySetName":"cgmp_tasks","logicalName":"cgmp_task"},"projects":{"entitySetName":"cgmp_projects","logicalName":"cgmp_project"},"notifications":{"entitySetName":"cgmp_notifications","logicalName":"cgmp_notification"},"changes":{"entitySetName":"cgmp_changes","logicalName":"cgmp_change"},"bridges":{"entitySetName":"cgmp_bridges","logicalName":"cgmp_bridge"},"auditlogs":{"entitySetName":"cgmp_auditlogs","logicalName":"cgmp_auditlog"},"knowledgebasearticles":{"entitySetName":"cre09_knowledgebasearticles","logicalName":"cre09_knowledgebasearticle"},"users":{"entitySetName":"systemusers","logicalName":"systemuser"},"attachments":{"entitySetName":"annotations","logicalName":"annotation"}}}}</DatabaseReferences>
+  <AppComponents>[]</AppComponents>
+  <AppComponentDependencies>[]</AppComponentDependencies>
+  <CanConsumeAppPass>1</CanConsumeAppPass>
+  <CanvasAppType>4</CanvasAppType>
+  <BypassConsent>0</BypassConsent>
+  <AdminControlBypassConsent>0</AdminControlBypassConsent>
+  <EmbeddedApp xsi:nil="true"></EmbeddedApp>
+  <IntroducedVersion>1.0</IntroducedVersion>
+  <CdsDependencies>{"cdsdependencies":[{"logicalname":"cgmp_userprofile","componenttype":1},{"logicalname":"cgmp_userfavorite","componenttype":1},{"logicalname":"cgmp_task","componenttype":1},{"logicalname":"cgmp_project","componenttype":1},{"logicalname":"cgmp_notification","componenttype":1},{"logicalname":"cgmp_change","componenttype":1},{"logicalname":"cgmp_bridge","componenttype":1},{"logicalname":"cgmp_auditlog","componenttype":1},{"logicalname":"cre09_knowledgebasearticle","componenttype":1},{"logicalname":"systemuser","componenttype":1},{"logicalname":"annotation","componenttype":1}]}</CdsDependencies>
+  <IsCustomizable>1</IsCustomizable>
+  <CodeAppPackageUris>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/AnnotationsService-DnAmGdHQ.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ArchiveCenter-xq_e6rAZ.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/AttachmentPanel-RQ3WyKs1.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/AttachmentRepository-DXPIfRCF.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/AuditCenter-BhldPzqR.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Cgmp_auditlogsService-DJT2I74t.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ChangeForm-n4seToKD.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ConfirmDialog-nKj8RWDf.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Cre09_knowledgebasearticlesService-D5u2Ali1.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Dashboard-B3SeFJBs.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/DataTable-D_fAoC2z.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/GIICCCommandCenter-DmG0IqEo.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/HeatMap-CNZq3Of_.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ISMWorkspace-3lWoT7Cy.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ITOpsWorkspace-B6fEMoR_.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/KnowledgeBase-BKDycCr-.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Leaderboard-COBBwdLN.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/NotificationCenter-DupPxyF9.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/NotificationPreferences-CFYcLPr6.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/PMOWorkspace-1gcWsV49.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/PowerBIAnalytics-2B6USUY1.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/ProjectRepository-CPjTy4vA.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Reports-Bl3t_Q08.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/SecurityRoles-D5IFPwge.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/Settings-BSNX7ySM.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/UserPickerSelect-CkguFusE.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/csv-CI1Pjgeb.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/format-WgBypvPL.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/index-BmwE3Q8z.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/index-CpLwMrSD.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/options-Bc-51Wlu.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/assets/roles-DNRhCWDO.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/change_changegovernanceappv10_37f2c_CodeAppPackages/vite.svg_ContentType_image/svg+xml</CodeAppPackageUri>
+  </CodeAppPackageUris>
+</CanvasApp>
