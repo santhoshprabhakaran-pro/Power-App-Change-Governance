@@ -81,9 +81,10 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   unreadCount: number;
+  onPrefetch?: (page: string) => void;
 }
 
-export default function Sidebar({ activePage, onNavigate, collapsed, onToggle, unreadCount }: SidebarProps) {
+export default function Sidebar({ activePage, onNavigate, collapsed, onToggle, unreadCount, onPrefetch }: SidebarProps) {
   const { userProfile, userLoading, isITOps, isObserver, assignedLocations } = useApp();
   const userRole = userProfile ? (userProfile.cgmp_role as unknown as number) : null;
 
@@ -145,6 +146,7 @@ export default function Sidebar({ activePage, onNavigate, collapsed, onToggle, u
             <button
               className={`sidebar__item ${activePage === item.id ? 'sidebar__item--active' : ''}`}
               onClick={() => onNavigate(item.id)}
+              onMouseEnter={() => onPrefetch?.(item.id)}
               aria-current={activePage === item.id ? 'page' : undefined}
             >
               <span className="sidebar__item-icon">{item.icon}</span>

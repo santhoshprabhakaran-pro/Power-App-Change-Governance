@@ -29,6 +29,8 @@ interface DataTableProps<T extends { [key: string]: unknown }> {
    *  rows are in the DOM at a time. Pagination controls are hidden; all rows are
    *  accessible via scroll. Defaults to false for full backward compatibility. */
   virtualise?: boolean;
+  /** Optional per-row CSS class name. Return an empty string to apply no extra class. */
+  rowClassName?: (row: T) => string;
 }
 
 const PAGE_SIZES = [25, 50, 100];
@@ -40,6 +42,7 @@ export default function DataTable<T extends { [key: string]: unknown }>({
   onSelectionChange, onRowClick, pageSize: defaultPageSize = 25,
   emptyMessage = 'No records found', emptyIcon, actions, ariaLabel = 'Data table',
   virtualise = false,
+  rowClassName,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -129,11 +132,12 @@ export default function DataTable<T extends { [key: string]: unknown }>({
     const rawId = row[idKey];
     const id = rawId != null ? String(rawId) : `__row_${ri}`;
     const selected = selectedIds.has(id);
+    const extraClass = rowClassName ? rowClassName(row) : '';
     return (
       <tr
         key={id}
         role="row"
-        className={`dt__row ${selected ? 'dt__row--selected' : ''} ${onRowClick ? 'dt__row--clickable' : ''}`}
+        className={`dt__row ${selected ? 'dt__row--selected' : ''} ${onRowClick ? 'dt__row--clickable' : ''} ${extraClass}`.trimEnd()}
         onClick={onRowClick ? () => onRowClick(row) : undefined}
         aria-selected={selectable ? selected : undefined}
         tabIndex={(selectable || !!onRowClick) ? 0 : undefined}

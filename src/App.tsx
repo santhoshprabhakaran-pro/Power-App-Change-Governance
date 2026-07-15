@@ -18,6 +18,35 @@ import { ROLE_LABEL, EXTENDED_ROLE_LABEL, ROLES, EXTENDED_ROLES } from './utils/
 import { initAppInsights, trackPageView, setUser } from './utils/appInsights';
 import { DeptAdminWorkspace } from './components/admin/DeptAdminWorkspace';
 
+// Prefetch map — calling these on Sidebar hover pre-warms the chunk before navigation
+const PREFETCH_MAP: Partial<Record<string, () => Promise<unknown>>> = {
+  dashboard: () => import('./components/Dashboard'),
+  pmo: () => import('./components/pmo/PMOWorkspace'),
+  itops: () => import('./components/itops/ITOpsWorkspace'),
+  ism: () => import('./components/ism/ISMWorkspace'),
+  giicc: () => import('./components/giicc/GIICCCommandCenter'),
+  project: () => import('./components/modules/ProjectRepository'),
+  'notification-center': () => import('./components/modules/NotificationCenter'),
+  audit: () => import('./components/modules/AuditCenter'),
+  knowledge: () => import('./components/modules/KnowledgeBase'),
+  archive: () => import('./components/modules/ArchiveCenter'),
+  reports: () => import('./components/modules/Reports'),
+  settings: () => import('./components/settings/Settings'),
+  security: () => import('./components/settings/SecurityRoles'),
+  'notif-prefs': () => import('./components/settings/NotificationPreferences'),
+  leaderboard: () => import('./components/modules/Leaderboard'),
+  heatmap: () => import('./components/modules/HeatMap'),
+  attachment: () => import('./components/modules/AttachmentRepository'),
+  powerbi: () => import('./components/modules/PowerBIAnalytics'),
+  'change-templates': () => import('./components/admin/ChangeTemplates'),
+  'blackout-calendar': () => import('./components/admin/BlackoutCalendar'),
+  'notification-rules': () => import('./components/admin/NotificationRules'),
+  scheduling: () => import('./components/modules/SchedulingCalendar'),
+  'capacity-planning': () => import('./components/modules/CapacityPlanning'),
+  'admin-dashboard': () => import('./components/admin/AdminDashboard'),
+  tasks: () => import('./components/modules/TaskManager'),
+};
+
 // Workspace components — lazy-loaded on first navigation to reduce initial bundle size
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const PMOWorkspace = lazy(() => import('./components/pmo/PMOWorkspace'));
@@ -349,6 +378,7 @@ function AppContent() {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(c => !c)}
           unreadCount={unreadCount}
+          onPrefetch={(page) => { void PREFETCH_MAP[page]?.(); }}
         />
         <main id="main-content" className="main-content">
           <Breadcrumb activePage={activePage} />
