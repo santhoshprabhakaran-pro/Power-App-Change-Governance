@@ -215,29 +215,6 @@ export default function ITOpsWorkspace() {
   const [expiredChangeIds, setExpiredChangeIds] = useState<Set<string>>(new Set());
   const expiredMarkingRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    const newExpired = new Set<string>();
-    filtered.forEach(c => {
-      const expired = findExpiredProposals((c as unknown as Record<string, unknown>).cgmp_versionhistory as string | undefined);
-      if (expired.length > 0) {
-        newExpired.add(c.cgmp_changeid);
-        // Fire-and-forget: mark each expired proposal in version history (once per change)
-        if (!expiredMarkingRef.current.has(c.cgmp_changeid)) {
-          expiredMarkingRef.current.add(c.cgmp_changeid);
-          expired.forEach(proposal => {
-            Cgmp_changesService.update(c.cgmp_changeid, {
-              cgmp_versionhistory: appendHistory(
-                (c as unknown as Record<string, unknown>).cgmp_versionhistory as string | undefined,
-                { _type: 'reschedule_expired', at: new Date().toISOString(), originalProposalAt: proposal.timestamp }
-              ),
-            } as any).catch(() => {});
-          });
-        }
-      }
-    });
-    setExpiredChangeIds(newExpired);
-  }, [filtered]);
-
   const doBulkReassign = useCallback(async () => {
     if (!bulkReassignTarget) return;
     const targets = changes.filter(c => selectedIds.has(c.cgmp_changeid));
@@ -358,6 +335,30 @@ export default function ITOpsWorkspace() {
       return true;
     });
   }, [tabFiltered, debouncedSearch, riskFilter, categoryFilter]);
+
+  /* Auto-expire reschedule proposals after 24 hours — runs after filtered is available */
+  useEffect(() => {
+    const newExpired = new Set<string>();
+    filtered.forEach(c => {
+      const expired = findExpiredProposals((c as unknown as Record<string, unknown>).cgmp_versionhistory as string | undefined);
+      if (expired.length > 0) {
+        newExpired.add(c.cgmp_changeid);
+        // Fire-and-forget: mark each expired proposal in version history (once per change)
+        if (!expiredMarkingRef.current.has(c.cgmp_changeid)) {
+          expiredMarkingRef.current.add(c.cgmp_changeid);
+          expired.forEach(proposal => {
+            Cgmp_changesService.update(c.cgmp_changeid, {
+              cgmp_versionhistory: appendHistory(
+                (c as unknown as Record<string, unknown>).cgmp_versionhistory as string | undefined,
+                { _type: 'reschedule_expired', at: new Date().toISOString(), originalProposalAt: proposal.timestamp }
+              ),
+            } as any).catch(() => {});
+          });
+        }
+      }
+    });
+    setExpiredChangeIds(newExpired);
+  }, [filtered]);
 
   const asChange = (row: AnyRow) => row as unknown as Cgmp_changes;
 

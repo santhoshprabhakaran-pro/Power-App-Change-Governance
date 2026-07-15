@@ -79,7 +79,7 @@ const CREATE_COMMANDS = [
 const OBSERVER_ROLE = 100000005;
 
 function CommandPalette({ onNavigate, onClose, listboxId, onOpenNotificationPanel }: {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, searchTerm?: string) => void;
   onClose: () => void;
   listboxId: string;
   onOpenNotificationPanel: () => void;
