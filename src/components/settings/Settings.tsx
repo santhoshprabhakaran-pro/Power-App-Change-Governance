@@ -28,21 +28,64 @@ const COMMON_TIMEZONES = [
   'Pacific/Auckland',
 ];
 
-
 const NOTIF_OPTS = [
   { value: '100000000', label: 'Email' },
   { value: '100000001', label: 'Teams' },
   { value: '100000002', label: 'Both (Email + Teams)' },
 ];
 
-const FEATURE_FLAG_DEFINITIONS = [
-  { key: 'emergency-fast-track', label: 'Emergency Change Fast-Track', description: '240-minute SLA and immediate Admin notification for emergency changes' },
-  { key: 'ism-signoff-gate', label: 'ISM Sign-Off Gate', description: 'Require ISM sign-off before IT Ops can proceed with handover' },
-  { key: 'advanced-rbac', label: 'Advanced RBAC', description: 'Enable Observer, ISM Deputy, and Department Admin roles' },
-  { key: 'sharepoint-integration', label: 'SharePoint Document Library', description: 'Store attachments in SharePoint instead of Dataverse annotations' },
-  { key: 'teams-integration', label: 'Teams Tab Integration', description: 'Enable Microsoft Teams adaptive card approvals' },
-  { key: 'capacity-planning', label: 'Capacity Planning Module', description: 'Show capacity planning heatmap in navigation' },
-  { key: 'scheduling-calendar', label: 'Scheduling Calendar', description: 'Show monthly scheduling calendar in navigation' },
+// G2-26: Structured feature flag type — TODO: replace with Cgmp_featureflagsService when table is created
+interface FeatureFlag {
+  key: string;
+  enabled: boolean;
+  label: string;
+  description: string;
+  enabledFor: string; // comma-separated UPNs, empty = all
+}
+
+const FEATURE_FLAG_DEFINITIONS: Omit<FeatureFlag, 'enabled'>[] = [
+  {
+    key: 'emergency-fast-track',
+    label: 'Emergency Change Fast-Track',
+    description: '240-minute SLA and immediate Admin notification for emergency changes',
+    enabledFor: '',
+  },
+  {
+    key: 'ism-signoff-gate',
+    label: 'ISM Sign-Off Gate',
+    description: 'Require ISM sign-off before IT Ops can proceed with handover',
+    enabledFor: '',
+  },
+  {
+    key: 'advanced-rbac',
+    label: 'Advanced RBAC',
+    description: 'Enable Observer, ISM Deputy, and Department Admin roles',
+    enabledFor: '',
+  },
+  {
+    key: 'sharepoint-integration',
+    label: 'SharePoint Document Library',
+    description: 'Store attachments in SharePoint instead of Dataverse annotations',
+    enabledFor: '',
+  },
+  {
+    key: 'teams-integration',
+    label: 'Teams Tab Integration',
+    description: 'Enable Microsoft Teams adaptive card approvals',
+    enabledFor: '',
+  },
+  {
+    key: 'capacity-planning',
+    label: 'Capacity Planning Module',
+    description: 'Show capacity planning heatmap in navigation',
+    enabledFor: '',
+  },
+  {
+    key: 'scheduling-calendar',
+    label: 'Scheduling Calendar',
+    description: 'Show monthly scheduling calendar in navigation',
+    enabledFor: '',
+  },
 ];
 
 export default function Settings() {
@@ -52,7 +95,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'preferences' | 'feature-flags'>('preferences');
   const [flagValues, setFlagValues] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(FEATURE_FLAG_DEFINITIONS.map(f => [f.key, isFeatureEnabled(f.key)]))
+    Object.fromEntries(FEATURE_FLAG_DEFINITIONS.map((f) => [f.key, isFeatureEnabled(f.key)]))
   );
   const [powerBIUrl, setPowerBIUrl] = useState('');
   const [powerBIUrlError, setPowerBIUrlError] = useState('');
@@ -63,7 +106,7 @@ export default function Settings() {
   useEffect(() => {
     if (userProfile) {
       setUpn(userProfile.cgmp_userprincipalname ?? '');
-      setNotifPref(String(userProfile.cgmp_notificationpreference as unknown as number ?? 100000000));
+      setNotifPref(String((userProfile.cgmp_notificationpreference as unknown as number) ?? 100000000));
       /* Load Power BI URL from Dataverse user profile */
       const dvUrl = (userProfile as any).cgmp_powerbiurl;
       if (dvUrl) {
@@ -71,6 +114,21 @@ export default function Settings() {
       }
     }
   }, [userProfile]);
+
+  // G2-26: Load feature flags — tries Dataverse first, falls back to localStorage
+  useEffect(() => {
+    const loadFlags = async () => {
+      try {
+        // TODO: replace with Cgmp_featureflagsService when table is created
+        // const flags = await Cgmp_featureflagsService.getAll();
+        // setFlagValues(Object.fromEntries(flags.map(f => [f.key, f.enabled])));
+      } catch {
+        const saved = localStorage.getItem('cgmp-feature-flags');
+        if (saved) setFlagValues(JSON.parse(saved) as Record<string, boolean>);
+      }
+    };
+    void loadFlags();
+  }, []);
 
   const handleSave = async () => {
     if (!userProfile) return;
@@ -83,7 +141,9 @@ export default function Settings() {
       showToast('success', 'Settings saved');
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to save settings');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const savePowerBIUrl = async () => {
@@ -105,12 +165,22 @@ export default function Settings() {
       showToast('success', 'Power BI URL saved');
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to save Power BI URL');
-    } finally { setPowerBISaving(false); }
+    } finally {
+      setPowerBISaving(false);
+    }
   };
 
   const handleFlagToggle = (key: string, enabled: boolean) => {
+    // G2-26: TODO: attempt Dataverse save first when Cgmp_featureflagsService is created:
+    // (async () => {
+    //   try {
+    //     await Cgmp_featureflagsService.update(key, { enabled });
+    //   } catch {
+    //     setFeatureFlag(key, enabled); // localStorage fallback
+    //   }
+    // })();
     setFeatureFlag(key, enabled);
-    setFlagValues(prev => ({ ...prev, [key]: enabled }));
+    setFlagValues((prev) => ({ ...prev, [key]: enabled }));
     showToast('success', 'Feature flag updated.');
   };
 
@@ -126,7 +196,12 @@ export default function Settings() {
       </div>
 
       {isAdmin && (
-        <div className="ism-tabs" role="tablist" aria-label="Settings sections" style={{ padding: '0 24px', marginBottom: 0 }}>
+        <div
+          className="ism-tabs"
+          role="tablist"
+          aria-label="Settings sections"
+          style={{ padding: '0 24px', marginBottom: 0 }}
+        >
           <button
             role="tab"
             aria-selected={settingsTab === 'preferences'}
@@ -151,24 +226,47 @@ export default function Settings() {
           <div className="settings-card">
             <div className="settings-card__title">Feature Flags</div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
-              Toggle experimental and optional platform features. Changes take effect immediately and are stored per-browser.
+              Toggle experimental and optional platform features. Changes take effect immediately and are stored
+              per-browser.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {FEATURE_FLAG_DEFINITIONS.map(flag => (
-                <div key={flag.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
+              {FEATURE_FLAG_DEFINITIONS.map((flag) => (
+                <div
+                  key={flag.key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 16,
+                    padding: '12px 0',
+                    borderBottom: '1px solid var(--border-light)',
+                  }}
+                >
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
                     <input
                       type="checkbox"
                       checked={flagValues[flag.key] ?? false}
-                      onChange={e => handleFlagToggle(flag.key, e.target.checked)}
+                      onChange={(e) => handleFlagToggle(flag.key, e.target.checked)}
                       style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
                     />
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{flag.label}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{flag.description}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        {flag.description}
+                      </div>
                     </div>
                   </label>
-                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--radius)', background: (flagValues[flag.key] ?? false) ? 'var(--primary)' : 'var(--bg-tertiary)', color: (flagValues[flag.key] ?? false) ? '#fff' : 'var(--text-tertiary)', fontWeight: 600, flexShrink: 0, alignSelf: 'center' }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius)',
+                      background: (flagValues[flag.key] ?? false) ? 'var(--primary)' : 'var(--bg-tertiary)',
+                      color: (flagValues[flag.key] ?? false) ? '#fff' : 'var(--text-tertiary)',
+                      fontWeight: 600,
+                      flexShrink: 0,
+                      alignSelf: 'center',
+                    }}
+                  >
                     {(flagValues[flag.key] ?? false) ? 'ON' : 'OFF'}
                   </span>
                 </div>
@@ -195,7 +293,13 @@ export default function Settings() {
                 </div>
                 <div className="settings-field">
                   <span className="settings-field__label">UPN (read-only)</span>
-                  <input className="ff-input" value={upn} disabled autoComplete="off" style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+                  <input
+                    className="ff-input"
+                    value={upn}
+                    disabled
+                    autoComplete="off"
+                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                  />
                 </div>
               </div>
             </div>
@@ -229,9 +333,15 @@ export default function Settings() {
                 <div className="settings-field settings-field--col">
                   <span className="settings-field__label">Preferred Channel</span>
                   <div className="settings-radio-group">
-                    {NOTIF_OPTS.map(o => (
+                    {NOTIF_OPTS.map((o) => (
                       <label key={o.value} className="settings-radio">
-                        <input type="radio" name="notif-pref" value={o.value} checked={notifPref === o.value} onChange={() => setNotifPref(o.value)} />
+                        <input
+                          type="radio"
+                          name="notif-pref"
+                          value={o.value}
+                          checked={notifPref === o.value}
+                          onChange={() => setNotifPref(o.value)}
+                        />
                         <span>{o.label}</span>
                       </label>
                     ))}
@@ -254,23 +364,36 @@ export default function Settings() {
                   <select
                     className="ff-input ff-select"
                     value={displayTz}
-                    onChange={e => { setDisplayTz(e.target.value); setTzSaved(false); }}
+                    onChange={(e) => {
+                      setDisplayTz(e.target.value);
+                      setTzSaved(false);
+                    }}
                     style={{ maxWidth: 320 }}
                   >
-                    {COMMON_TIMEZONES.map(tz => (
-                      <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz.replace(/_/g, ' ')}
+                      </option>
                     ))}
                   </select>
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    Preview: {formatInTz(new Date().toISOString(), { timeZone: displayTz } as Intl.DateTimeFormatOptions)}
+                    Preview:{' '}
+                    {formatInTz(new Date().toISOString(), { timeZone: displayTz } as Intl.DateTimeFormatOptions)}
                   </span>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}>
-                {tzSaved && <span style={{ fontSize: 12, color: 'var(--success)' }}>Saved — page will use this timezone</span>}
+              <div
+                style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}
+              >
+                {tzSaved && (
+                  <span style={{ fontSize: 12, color: 'var(--success)' }}>Saved — page will use this timezone</span>
+                )}
                 <button
                   className="btn btn--primary btn--sm"
-                  onClick={() => { setDisplayTimezone(displayTz); setTzSaved(true); }}
+                  onClick={() => {
+                    setDisplayTimezone(displayTz);
+                    setTzSaved(true);
+                  }}
                 >
                   Apply Timezone
                 </button>
@@ -286,13 +409,16 @@ export default function Settings() {
                   <input
                     className={`ff-input${powerBIUrlError ? ' ff-input--error' : ''}`}
                     value={powerBIUrl}
-                    onChange={e => { setPowerBIUrl(e.target.value); if (powerBIUrlError) setPowerBIUrlError(''); }}
+                    onChange={(e) => {
+                      setPowerBIUrl(e.target.value);
+                      if (powerBIUrlError) setPowerBIUrlError('');
+                    }}
                     placeholder="https://app.powerbi.com/reportEmbed?reportId=..."
                   />
-                  {powerBIUrlError && (
-                    <span style={{ fontSize: 12, color: 'var(--danger)' }}>{powerBIUrlError}</span>
-                  )}
-                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Paste your Power BI embed URL to enable the Power BI Analytics page</span>
+                  {powerBIUrlError && <span style={{ fontSize: 12, color: 'var(--danger)' }}>{powerBIUrlError}</span>}
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Paste your Power BI embed URL to enable the Power BI Analytics page
+                  </span>
                   <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
                     URL is saved to your user profile and synced across sessions.
                   </p>
@@ -305,7 +431,16 @@ export default function Settings() {
               </div>
             </div>
           </div>
-          <div style={{ marginTop: 24, padding: '12px 0', borderTop: '1px solid var(--border-light)', color: 'var(--text-tertiary)', fontSize: 11, textAlign: 'right' }}>
+          <div
+            style={{
+              marginTop: 24,
+              padding: '12px 0',
+              borderTop: '1px solid var(--border-light)',
+              color: 'var(--text-tertiary)',
+              fontSize: 11,
+              textAlign: 'right',
+            }}
+          >
             Change Governance Platform v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—'}
           </div>
         </>

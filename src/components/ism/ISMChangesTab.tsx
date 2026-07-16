@@ -2,17 +2,24 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Cgmp_changes } from '../../generated/models/Cgmp_changesModel';
 import type { Cgmp_projects } from '../../generated/models/Cgmp_projectsModel';
 import type { Systemusers } from '../../generated/models/SystemusersModel';
+import { Cgmp_changesService, Cgmp_notificationsService } from '../../generated';
 import {
-  Cgmp_changesService,
-  Cgmp_notificationsService,
-} from '../../generated';
-import {
-  STATUS, statusLabel, statusColor, riskLabel, riskColor,
-  isIsmFrozen, daysUntilIsmFreeze, ismFreezeDate, useCountdown,
-  useSystemUsers, appendHistory,
+  STATUS,
+  statusLabel,
+  statusColor,
+  riskLabel,
+  riskColor,
+  isIsmFrozen,
+  daysUntilIsmFreeze,
+  ismFreezeDate,
+  useCountdown,
+  useSystemUsers,
+  appendHistory,
 } from '../../hooks/useDataverse';
 import { fmtShortDate as fmtDate, getDisplayTimezone } from '../../utils/format';
 import { asNotifCategory, asNotifPriority } from '../../utils/optionSets';
+import { trackAppEvent, trackAppException } from '../../utils/appInsights';
+import { getQuietHoursSnoozedUntil, isNotifCategoryEnabled } from '../../utils/notifications';
 import { parseChangeUATData, defaultUATEntry } from '../giicc/GIICCCommandCenter';
 import { SlidePanel } from '../ui/Modal';
 import { PROJ_STATUS_LABEL, PROJ_STATUS_CLASS, ChangeDetailPanel, ProjectViewPanel } from './ISMPanels';
@@ -59,8 +66,12 @@ const CONCERN_COLORS: Record<string, string> = {
 function parseConcerns(versionHistory: string | undefined | null): ConcernEntry[] {
   try {
     const entries = JSON.parse(versionHistory ?? '[]');
-    return (Array.isArray(entries) ? entries : []).filter((e: unknown) => (e as Record<string, unknown>)._type === 'concern') as ConcernEntry[];
-  } catch { return []; }
+    return (Array.isArray(entries) ? entries : []).filter(
+      (e: unknown) => (e as Record<string, unknown>)._type === 'concern'
+    ) as ConcernEntry[];
+  } catch {
+    return [];
+  }
 }
 
 /* ─── Per-Change UAT Contact Panel ──────────────────────────────── */
@@ -94,48 +105,78 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
       setContacts(data[project.cgmp_projectid]?.contacts ?? []);
     }
     if (!open) {
-      setO365Search(''); setO365Selected(null); setShowDropdown(false);
-      setNewName(''); setNewEmail(''); setNewPhone(''); setAddErr('');
+      setO365Search('');
+      setO365Selected(null);
+      setShowDropdown(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPhone('');
+      setAddErr('');
       setAddMode('o365');
     }
   }, [open, project, change]);
 
   const frozen = change ? isIsmFrozen(change.cgmp_starttime) : false;
   const daysLeft = change?.cgmp_starttime && !frozen ? daysUntilIsmFreeze(change.cgmp_starttime) : null;
-  const freezeTargetISO = change?.cgmp_starttime && !frozen ? ismFreezeDate(change.cgmp_starttime).toISOString() : undefined;
+  const freezeTargetISO =
+    change?.cgmp_starttime && !frozen ? ismFreezeDate(change.cgmp_starttime).toISOString() : undefined;
   const freezeCountdown = useCountdown(freezeTargetISO);
 
   const o365Results = useMemo(() => {
     const q = o365Search.trim().toLowerCase();
     if (!q || q.length < 2) return [];
     return sysUsers
-      .filter(u =>
-        u.fullname?.toLowerCase().includes(q) ||
-        u.internalemailaddress?.toLowerCase().includes(q) ||
-        u.domainname?.toLowerCase().includes(q)
+      .filter(
+        (u) =>
+          u.fullname?.toLowerCase().includes(q) ||
+          u.internalemailaddress?.toLowerCase().includes(q) ||
+          u.domainname?.toLowerCase().includes(q)
       )
       .slice(0, 8);
   }, [o365Search, sysUsers]);
 
-  const isAlreadyAdded = (u: Systemusers) => contacts.some(c => c.email === u.internalemailaddress);
+  const isAlreadyAdded = (u: Systemusers) => contacts.some((c) => c.email === u.internalemailaddress);
 
   const handleO365Add = () => {
     if (!o365Selected) return;
-    if (isAlreadyAdded(o365Selected)) { setAddErr('This user is already in the contact list.'); return; }
-    setContacts(prev => [...prev, {
-      name: o365Selected.fullname ?? o365Selected.domainname,
-      email: o365Selected.internalemailaddress,
-      phone: o365Selected.mobilephone || undefined,
-    }]);
-    setO365Search(''); setO365Selected(null); setAddErr('');
+    if (isAlreadyAdded(o365Selected)) {
+      setAddErr('This user is already in the contact list.');
+      return;
+    }
+    setContacts((prev) => [
+      ...prev,
+      {
+        name: o365Selected.fullname ?? o365Selected.domainname,
+        email: o365Selected.internalemailaddress,
+        phone: o365Selected.mobilephone || undefined,
+      },
+    ]);
+    setO365Search('');
+    setO365Selected(null);
+    setAddErr('');
   };
 
   const handleCustomAdd = () => {
-    if (!newName.trim()) { setAddErr('Name is required'); return; }
-    if (!newEmail.trim() || !newEmail.includes('@')) { setAddErr('Valid email is required'); return; }
-    if (contacts.some(c => c.email === newEmail.trim())) { setAddErr('This email is already in the contact list.'); return; }
-    setContacts(prev => [...prev, { name: newName.trim(), email: newEmail.trim(), phone: newPhone.trim() || undefined }]);
-    setNewName(''); setNewEmail(''); setNewPhone(''); setAddErr('');
+    if (!newName.trim()) {
+      setAddErr('Name is required');
+      return;
+    }
+    if (!newEmail.trim() || !newEmail.includes('@')) {
+      setAddErr('Valid email is required');
+      return;
+    }
+    if (contacts.some((c) => c.email === newEmail.trim())) {
+      setAddErr('This email is already in the contact list.');
+      return;
+    }
+    setContacts((prev) => [
+      ...prev,
+      { name: newName.trim(), email: newEmail.trim(), phone: newPhone.trim() || undefined },
+    ]);
+    setNewName('');
+    setNewEmail('');
+    setNewPhone('');
+    setAddErr('');
   };
 
   const handleSave = async () => {
@@ -148,15 +189,20 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
       const r = await Cgmp_changesService.update(change.cgmp_changeid, { cgmp_uatusers: JSON.stringify(updated) });
       if (!r.success) throw r.error ?? new Error('Failed to save');
       showToast('success', `UAT contacts updated for ${project.cgmp_name} (${change.cgmp_changenumber})`);
-      onSaved(); onClose();
+      onSaved();
+      onClose();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to save UAT contacts');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const footer = (
     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-      <button className="btn btn--outline" onClick={onClose} disabled={saving}>Cancel</button>
+      <button className="btn btn--outline" onClick={onClose} disabled={saving}>
+        Cancel
+      </button>
       <button className="btn btn--primary" onClick={handleSave} disabled={saving || frozen}>
         {saving ? 'Saving…' : 'Save UAT Contacts'}
       </button>
@@ -166,7 +212,10 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
   if (!project || !change) return null;
 
   return (
-    <SlidePanel open={open} onClose={onClose} width={540}
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      width={540}
       title="UAT Contacts for Change"
       subtitle={`${project.cgmp_name} — ${change.cgmp_changenumber}`}
       footer={footer}
@@ -174,14 +223,23 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
       <div className="uat-panel" style={{ padding: '0 20px' }}>
         {frozen ? (
           <div className="ism-freeze-banner ism-freeze-banner--locked">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+            </svg>
             UAT collection is frozen — change is within 3 days of scheduled start.
           </div>
         ) : daysLeft !== null && daysLeft <= 5 ? (
           <div className="ism-freeze-banner ism-freeze-banner--warn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
-            UAT collection freezes in <strong>{daysLeft} day{daysLeft !== 1 ? 's' : ''}</strong>
-            {freezeCountdown && freezeCountdown !== 'N/A' && <span style={{ marginLeft: 6, fontFamily: 'monospace', fontSize: 12 }}>({freezeCountdown})</span>}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+            </svg>
+            UAT collection freezes in{' '}
+            <strong>
+              {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+            </strong>
+            {freezeCountdown && freezeCountdown !== 'N/A' && (
+              <span style={{ marginLeft: 6, fontFamily: 'monospace', fontSize: 12 }}>({freezeCountdown})</span>
+            )}
             . Update before the deadline.
           </div>
         ) : null}
@@ -206,9 +264,14 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
                     </div>
                   </div>
                   {!frozen && (
-                    <button className="btn-icon btn-icon--danger" title="Remove"
-                      onClick={() => setContacts(prev => prev.filter((_, j) => j !== i))}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+                    <button
+                      className="btn-icon btn-icon--danger"
+                      title="Remove"
+                      onClick={() => setContacts((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
                     </button>
                   )}
                 </div>
@@ -221,15 +284,27 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
           <div className="uat-section">
             <div className="uat-section__title">Add Contact</div>
             <div className="uat-add-tabs">
-              <button className={`uat-add-tab ${addMode === 'o365' ? 'uat-add-tab--active' : ''}`}
-                onClick={() => { setAddMode('o365'); setAddErr(''); }}>
+              <button
+                className={`uat-add-tab ${addMode === 'o365' ? 'uat-add-tab--active' : ''}`}
+                onClick={() => {
+                  setAddMode('o365');
+                  setAddErr('');
+                }}
+              >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.7 }}>
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
                 O365 Lookup
               </button>
-              <button className={`uat-add-tab ${addMode === 'custom' ? 'uat-add-tab--active' : ''}`}
-                onClick={() => { setAddMode('custom'); setAddErr(''); setO365Selected(null); setO365Search(''); }}>
+              <button
+                className={`uat-add-tab ${addMode === 'custom' ? 'uat-add-tab--active' : ''}`}
+                onClick={() => {
+                  setAddMode('custom');
+                  setAddErr('');
+                  setO365Selected(null);
+                  setO365Search('');
+                }}
+              >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.7 }}>
                   <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                 </svg>
@@ -248,26 +323,40 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
                     placeholder={sysLoading ? 'Loading O365 users…' : 'Search by name, email or UPN…'}
                     disabled={sysLoading}
                     value={o365Search}
-                    onChange={e => { setO365Search(e.target.value); setO365Selected(null); setShowDropdown(true); setAddErr(''); }}
+                    onChange={(e) => {
+                      setO365Search(e.target.value);
+                      setO365Selected(null);
+                      setShowDropdown(true);
+                      setAddErr('');
+                    }}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 180)}
                     autoComplete="off"
                   />
                   {o365Search && (
-                    <button className="uat-o365-clear" onClick={() => { setO365Search(''); setO365Selected(null); }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+                    <button
+                      className="uat-o365-clear"
+                      onClick={() => {
+                        setO365Search('');
+                        setO365Selected(null);
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
                     </button>
                   )}
                 </div>
 
                 {showDropdown && o365Results.length > 0 && (
                   <div className="uat-o365-dropdown">
-                    {o365Results.map(u => {
+                    {o365Results.map((u) => {
                       const already = isAlreadyAdded(u);
                       return (
-                        <div key={u.systemuserid}
+                        <div
+                          key={u.systemuserid}
                           className={`uat-o365-result ${already ? 'uat-o365-result--added' : ''}`}
-                          onMouseDown={e => {
+                          onMouseDown={(e) => {
                             e.preventDefault();
                             if (already) return;
                             setO365Selected(u);
@@ -276,7 +365,9 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
                             setAddErr('');
                           }}
                         >
-                          <span className="uat-o365-result__avatar">{(u.fullname ?? u.domainname).charAt(0).toUpperCase()}</span>
+                          <span className="uat-o365-result__avatar">
+                            {(u.fullname ?? u.domainname).charAt(0).toUpperCase()}
+                          </span>
                           <div className="uat-o365-result__info">
                             <span className="uat-o365-result__name">{u.fullname ?? u.domainname}</span>
                             <span className="uat-o365-result__upn">{u.domainname}</span>
@@ -293,36 +384,68 @@ function ChangeUATContactPanel({ open, onClose, project, change, onSaved, showTo
                 )}
                 {o365Selected && (
                   <div className="uat-o365-preview">
-                    <span className="uat-o365-preview__avatar">{(o365Selected.fullname ?? o365Selected.domainname).charAt(0).toUpperCase()}</span>
+                    <span className="uat-o365-preview__avatar">
+                      {(o365Selected.fullname ?? o365Selected.domainname).charAt(0).toUpperCase()}
+                    </span>
                     <div className="uat-o365-preview__info">
                       <span className="uat-o365-preview__name">{o365Selected.fullname ?? o365Selected.domainname}</span>
                       <span className="uat-o365-preview__upn">{o365Selected.domainname}</span>
-                      {o365Selected.mobilephone && <span className="uat-o365-preview__phone">{o365Selected.mobilephone}</span>}
+                      {o365Selected.mobilephone && (
+                        <span className="uat-o365-preview__phone">{o365Selected.mobilephone}</span>
+                      )}
                     </div>
-                    <button className="btn btn--primary btn--sm" onClick={handleO365Add}>+ Add</button>
+                    <button className="btn btn--primary btn--sm" onClick={handleO365Add}>
+                      + Add
+                    </button>
                   </div>
                 )}
-                {addErr && <span className="ff-error" style={{ marginTop: 6, display: 'block' }}>{addErr}</span>}
+                {addErr && (
+                  <span className="ff-error" style={{ marginTop: 6, display: 'block' }}>
+                    {addErr}
+                  </span>
+                )}
               </div>
             )}
 
             {addMode === 'custom' && (
               <div className="uat-add-form">
                 <div className="ff-group">
-                  <label className="ff-label">Full Name <span className="ff-required">*</span></label>
-                  <input className={`ff-input ${addErr && !newName.trim() ? 'ff-input--error' : ''}`}
-                    value={newName} onChange={e => { setNewName(e.target.value); setAddErr(''); }}
-                    placeholder="Enter full name" />
+                  <label className="ff-label">
+                    Full Name <span className="ff-required">*</span>
+                  </label>
+                  <input
+                    className={`ff-input ${addErr && !newName.trim() ? 'ff-input--error' : ''}`}
+                    value={newName}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      setAddErr('');
+                    }}
+                    placeholder="Enter full name"
+                  />
                 </div>
                 <div className="ff-group">
-                  <label className="ff-label">Email <span className="ff-required">*</span></label>
-                  <input className={`ff-input ${addErr && !newEmail.includes('@') ? 'ff-input--error' : ''}`}
-                    type="email" value={newEmail} onChange={e => { setNewEmail(e.target.value); setAddErr(''); }}
-                    placeholder="Enter email address" />
+                  <label className="ff-label">
+                    Email <span className="ff-required">*</span>
+                  </label>
+                  <input
+                    className={`ff-input ${addErr && !newEmail.includes('@') ? 'ff-input--error' : ''}`}
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => {
+                      setNewEmail(e.target.value);
+                      setAddErr('');
+                    }}
+                    placeholder="Enter email address"
+                  />
                 </div>
                 <div className="ff-group">
                   <label className="ff-label">Phone</label>
-                  <input className="ff-input" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="Optional" />
+                  <input
+                    className="ff-input"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="Optional"
+                  />
                 </div>
                 {addErr && <span className="ff-error">{addErr}</span>}
                 <button className="btn btn--secondary" onClick={handleCustomAdd} style={{ alignSelf: 'flex-start' }}>
@@ -375,7 +498,9 @@ export default function ISMChangesTab({
   const favChangeLsKey = `ism-fav-changes-${userProfileId ?? 'anon'}`;
   const [favChangeIds, setFavChangeIds] = useState<Set<string>>(new Set());
   useEffect(() => {
-    try { setFavChangeIds(new Set(JSON.parse(localStorage.getItem(favChangeLsKey) ?? '[]'))); } catch {}
+    try {
+      setFavChangeIds(new Set(JSON.parse(localStorage.getItem(favChangeLsKey) ?? '[]')));
+    } catch {}
   }, [favChangeLsKey]);
   const [showFavChangesOnly, setShowFavChangesOnly] = useState(false);
 
@@ -393,21 +518,26 @@ export default function ISMChangesTab({
   const [changeUATTarget, setChangeUATTarget] = useState<{ project: Cgmp_projects; change: Cgmp_changes } | null>(null);
 
   const toggleChange = useCallback((id: string) => {
-    setExpandedChanges(s => {
+    setExpandedChanges((s) => {
       const n = new Set(s);
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
   }, []);
 
-  const toggleFavChange = useCallback((changeId: string) => {
-    setFavChangeIds(prev => {
-      const next = new Set(prev);
-      next.has(changeId) ? next.delete(changeId) : next.add(changeId);
-      try { localStorage.setItem(favChangeLsKey, JSON.stringify([...next])); } catch {}
-      return next;
-    });
-  }, [favChangeLsKey]);
+  const toggleFavChange = useCallback(
+    (changeId: string) => {
+      setFavChangeIds((prev) => {
+        const next = new Set(prev);
+        next.has(changeId) ? next.delete(changeId) : next.add(changeId);
+        try {
+          localStorage.setItem(favChangeLsKey, JSON.stringify([...next]));
+        } catch {}
+        return next;
+      });
+    },
+    [favChangeLsKey]
+  );
 
   const clearConcern = useCallback(() => {
     setConcernChangeId(null);
@@ -421,10 +551,10 @@ export default function ISMChangesTab({
     if (!concernChangeId || !concernProjectId || !concernType || !concernRemarks.trim()) return;
     setConcernSubmitting(true);
     try {
-      const change = allChanges.find(c => c.cgmp_changeid === concernChangeId);
+      const change = allChanges.find((c) => c.cgmp_changeid === concernChangeId);
       if (!change) throw new Error('Change not found');
 
-      const project = allProjects.find(p => p.cgmp_projectid === concernProjectId);
+      const project = allProjects.find((p) => p.cgmp_projectid === concernProjectId);
       const projectName = project?.cgmp_name ?? concernProjectId;
 
       const newEntry: ConcernEntry = {
@@ -438,25 +568,43 @@ export default function ISMChangesTab({
         timestamp: new Date().toISOString(),
       };
 
-      const latestChange = await Cgmp_changesService.get(concernChangeId, { select: ['cgmp_versionhistory'] as never[] });
-      const existingHistory = (latestChange.data?.cgmp_versionhistory ?? change.cgmp_versionhistory);
+      const latestChange = await Cgmp_changesService.get(concernChangeId, {
+        select: ['cgmp_versionhistory'] as never[],
+      });
+      const existingHistory = latestChange.data?.cgmp_versionhistory ?? change.cgmp_versionhistory;
 
       const r = await Cgmp_changesService.update(concernChangeId, {
         cgmp_versionhistory: appendHistory(existingHistory, newEntry),
       });
       if (!r.success) throw r.error ?? new Error('Failed to submit concern');
 
+      // G2-8: track concern raised event
+      trackAppEvent('concern.raised', { changeId: concernChangeId });
+
       const cachedProfiles = userProfilesCacheRef.current ?? [];
-      const changeLocs = (change.cgmp_location ?? '').split(',').map((l: string) => l.trim()).filter(Boolean);
-      const itOpsPocs = cachedProfiles.filter((p: Record<string, unknown>) =>
-        (p.cgmp_role as unknown as number) === 100000002
+      const changeLocs = (change.cgmp_location ?? '')
+        .split(',')
+        .map((l: string) => l.trim())
+        .filter(Boolean);
+      const itOpsPocs = cachedProfiles.filter(
+        (p: Record<string, unknown>) => (p.cgmp_role as unknown as number) === 100000002
       );
       const recipients = itOpsPocs.filter((p: Record<string, unknown>) => {
-        const pocLocs = ((p as Record<string, unknown>).cgmp_assignedlocations as string ?? '').split(',').map((l: string) => l.trim()).filter(Boolean);
+        const pocLocs = (((p as Record<string, unknown>).cgmp_assignedlocations as string) ?? '')
+          .split(',')
+          .map((l: string) => l.trim())
+          .filter(Boolean);
         return pocLocs.length === 0 || pocLocs.some((loc: string) => changeLocs.includes(loc));
       });
       const finalRecipients = recipients.length > 0 ? recipients : itOpsPocs;
       finalRecipients.forEach((p: Record<string, unknown>) => {
+        // G2-7: skip if recipient opted out of Escalation notifications
+        if (!isNotifCategoryEnabled(p.cgmp_notificationcategories as string | undefined, 100000002)) return;
+        // G2-6: apply quiet-hours snooze when recipient is in their quiet window
+        const snoozedUntil = getQuietHoursSnoozedUntil(
+          p.cgmp_quiethoursstart as number | undefined,
+          p.cgmp_quiethoursend as number | undefined
+        );
         Cgmp_notificationsService.create({
           cgmp_title: `Concern raised on ${change.cgmp_changenumber}`,
           cgmp_message: `${projectName} raised ${CONCERN_LABELS[concernType] ?? concernType}: ${concernRemarks.trim()}`,
@@ -467,22 +615,34 @@ export default function ISMChangesTab({
           cgmp_actionurl: `#pmo?change=${change.cgmp_changenumber ?? ''}`,
           ownerid: p.cgmp_userprofileid as string,
           statecode: 0 as unknown as never,
-        } as never).catch(err => { if (import.meta.env.DEV) console.error('Background notification failed:', err); });
+          ...(snoozedUntil ? { cgmp_snoozeduntil: snoozedUntil } : {}),
+        } as never).catch((err) => trackAppException(err, { context: 'notification.create' }));
       });
 
-      const pmoOwner = cachedProfiles.find((p: Record<string, unknown>) => p.cgmp_userprincipalname === change.cgmp_createdby);
+      const pmoOwner = cachedProfiles.find(
+        (p: Record<string, unknown>) => p.cgmp_userprincipalname === change.cgmp_createdby
+      );
       if (pmoOwner) {
-        Cgmp_notificationsService.create({
-          cgmp_title: `Concern raised on ${change.cgmp_changenumber}`,
-          cgmp_message: `${projectName} raised ${CONCERN_LABELS[concernType] ?? concernType}: ${concernRemarks.trim()}`,
-          cgmp_category: asNotifCategory(100000002),
-          cgmp_priority: asNotifPriority(100000000),
-          cgmp_recipientid: pmoOwner.cgmp_userprofileid as string,
-          cgmp_relatedchangeid: concernChangeId,
-          cgmp_actionurl: `#pmo?change=${change.cgmp_changenumber ?? ''}`,
-          ownerid: pmoOwner.cgmp_userprofileid as string,
-          statecode: 0 as unknown as never,
-        } as never).catch(err => { if (import.meta.env.DEV) console.error('Background notification failed:', err); });
+        // G2-7: skip if PMO owner opted out of Escalation notifications
+        if (isNotifCategoryEnabled(pmoOwner.cgmp_notificationcategories as string | undefined, 100000002)) {
+          // G2-6: apply quiet-hours snooze for PMO owner
+          const snoozedUntilPmo = getQuietHoursSnoozedUntil(
+            pmoOwner.cgmp_quiethoursstart as number | undefined,
+            pmoOwner.cgmp_quiethoursend as number | undefined
+          );
+          Cgmp_notificationsService.create({
+            cgmp_title: `Concern raised on ${change.cgmp_changenumber}`,
+            cgmp_message: `${projectName} raised ${CONCERN_LABELS[concernType] ?? concernType}: ${concernRemarks.trim()}`,
+            cgmp_category: asNotifCategory(100000002),
+            cgmp_priority: asNotifPriority(100000000),
+            cgmp_recipientid: pmoOwner.cgmp_userprofileid as string,
+            cgmp_relatedchangeid: concernChangeId,
+            cgmp_actionurl: `#pmo?change=${change.cgmp_changenumber ?? ''}`,
+            ownerid: pmoOwner.cgmp_userprofileid as string,
+            statecode: 0 as unknown as never,
+            ...(snoozedUntilPmo ? { cgmp_snoozeduntil: snoozedUntilPmo } : {}),
+          } as never).catch((err) => trackAppException(err, { context: 'notification.create' }));
+        }
       }
 
       showToast('success', 'Concern submitted. IT Ops has been notified.');
@@ -493,37 +653,77 @@ export default function ISMChangesTab({
     } finally {
       setConcernSubmitting(false);
     }
-  }, [concernChangeId, concernProjectId, concernType, concernRemarks, concernSeverity, allChanges, allProjects, currentUserName, showToast, onRefresh, clearConcern, userProfilesCacheRef]);
+  }, [
+    concernChangeId,
+    concernProjectId,
+    concernType,
+    concernRemarks,
+    concernSeverity,
+    allChanges,
+    allProjects,
+    currentUserName,
+    showToast,
+    onRefresh,
+    clearConcern,
+    userProfilesCacheRef,
+  ]);
 
   /* ── Concern form sub-component (rendered inline) ── */
   const ConcernForm = () => (
     <div className="ism-concern-form">
-      <div className="ism-concern-form__title"><span>⚠</span> Raise a Concern</div>
+      <div className="ism-concern-form__title">
+        <span>⚠</span> Raise a Concern
+      </div>
       <div className="ism-concern-form__row">
         <label className="ism-concern-form__label">Concern Type</label>
-        <select className="ff-input ff-select ism-concern-form__select" value={concernType} onChange={e => setConcernType(e.target.value)}>
+        <select
+          className="ff-input ff-select ism-concern-form__select"
+          value={concernType}
+          onChange={(e) => setConcernType(e.target.value)}
+        >
           <option value="">— Select type —</option>
-          {Object.entries(CONCERN_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {Object.entries(CONCERN_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
         </select>
       </div>
       <div className="ism-concern-form__row">
         <label className="ism-concern-form__label">Severity</label>
-        <select className="ff-input ff-select ism-concern-form__select" value={concernSeverity} onChange={e => setConcernSeverity(e.target.value as ConcernSeverity)}>
-          {(['Low', 'Medium', 'High', 'Critical'] as ConcernSeverity[]).map(s => <option key={s} value={s}>{s}</option>)}
+        <select
+          className="ff-input ff-select ism-concern-form__select"
+          value={concernSeverity}
+          onChange={(e) => setConcernSeverity(e.target.value as ConcernSeverity)}
+        >
+          {(['Low', 'Medium', 'High', 'Critical'] as ConcernSeverity[]).map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
       </div>
       <div className="ism-concern-form__row">
         <label className="ism-concern-form__label">Remarks</label>
-        <textarea className="ff-input ff-textarea ism-concern-form__textarea" rows={3}
-          placeholder="Describe the concern or query…" value={concernRemarks}
-          onChange={e => setConcernRemarks(e.target.value)} />
+        <textarea
+          className="ff-input ff-textarea ism-concern-form__textarea"
+          rows={3}
+          placeholder="Describe the concern or query…"
+          value={concernRemarks}
+          onChange={(e) => setConcernRemarks(e.target.value)}
+        />
       </div>
       <div className="ism-concern-form__actions">
-        <button className="btn btn--primary btn--sm" onClick={submitConcern}
-          disabled={concernSubmitting || !concernType || !concernRemarks.trim()}>
+        <button
+          className="btn btn--primary btn--sm"
+          onClick={submitConcern}
+          disabled={concernSubmitting || !concernType || !concernRemarks.trim()}
+        >
           {concernSubmitting ? 'Submitting…' : 'Submit Concern'}
         </button>
-        <button className="btn btn--ghost btn--sm" onClick={clearConcern}>Cancel</button>
+        <button className="btn btn--ghost btn--sm" onClick={clearConcern}>
+          Cancel
+        </button>
       </div>
     </div>
   );
@@ -534,8 +734,8 @@ export default function ISMChangesTab({
     const uatData = parseChangeUATData(c.cgmp_uatusers);
     const uatCount = uatData[p.cgmp_projectid]?.contacts?.length ?? 0;
     const concerns = parseConcerns(c.cgmp_versionhistory);
-    const thisProjConcern = concerns.find(e => e.projectId === p.cgmp_projectid);
-    const otherConcerns = concerns.filter(e => e.projectId !== p.cgmp_projectid);
+    const thisProjConcern = concerns.find((e) => e.projectId === p.cgmp_projectid);
+    const otherConcerns = concerns.filter((e) => e.projectId !== p.cgmp_projectid);
     const isRaisingConcern = concernChangeId === c.cgmp_changeid && concernProjectId === p.cgmp_projectid;
     const hasConcernContent = !!(thisProjConcern || otherConcerns.length > 0 || isRaisingConcern);
     const cs = c.cgmp_status as unknown as number;
@@ -562,51 +762,78 @@ export default function ISMChangesTab({
             </div>
           </div>
           <div className="ism-proj-impact-row__actions">
-            <button className="btn btn--xs btn--outline"
-              onClick={e => { e.stopPropagation(); setViewProject(p); }}>
+            <button
+              className="btn btn--xs btn--outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewProject(p);
+              }}
+            >
               View Project
             </button>
-            <button className="btn btn--xs btn--outline"
-              onClick={e => { e.stopPropagation(); setViewChangeDetail(c); }}>
+            <button
+              className="btn btn--xs btn--outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewChangeDetail(c);
+              }}
+            >
               View Change
             </button>
-            {showUATButton && (() => {
-              if (cs === STATUS.UATUpdates || cs === STATUS.Released) {
+            {showUATButton &&
+              (() => {
+                if (cs === STATUS.UATUpdates || cs === STATUS.Released) {
+                  return (
+                    <button
+                      className={`btn btn--xs ${frozen ? 'btn--outline' : 'btn--primary'}`}
+                      disabled={frozen}
+                      title={frozen ? 'UAT collection is frozen (within 3 days of change)' : undefined}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChangeUATTarget({ project: p, change: c });
+                      }}
+                    >
+                      {frozen ? '🔒 UAT Frozen' : 'Update UAT'}
+                    </button>
+                  );
+                }
+                if (cs === STATUS.InProgress || cs === STATUS.Completed || cs === STATUS.Closed) {
+                  return (
+                    <button
+                      className="btn btn--xs btn--outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigateToUATStatus?.();
+                      }}
+                    >
+                      View UAT Status
+                    </button>
+                  );
+                }
                 return (
                   <button
-                    className={`btn btn--xs ${frozen ? 'btn--outline' : 'btn--primary'}`}
-                    disabled={frozen}
-                    title={frozen ? 'UAT collection is frozen (within 3 days of change)' : undefined}
-                    onClick={e => { e.stopPropagation(); setChangeUATTarget({ project: p, change: c }); }}>
-                    {frozen ? '🔒 UAT Frozen' : 'Update UAT'}
+                    className="btn btn--xs btn--primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChangeUATTarget({ project: p, change: c });
+                    }}
+                  >
+                    Update UAT
                   </button>
                 );
-              }
-              if (cs === STATUS.InProgress || cs === STATUS.Completed || cs === STATUS.Closed) {
-                return (
-                  <button className="btn btn--xs btn--outline"
-                    onClick={e => { e.stopPropagation(); onNavigateToUATStatus?.(); }}>
-                    View UAT Status
-                  </button>
-                );
-              }
-              return (
-                <button className="btn btn--xs btn--primary"
-                  onClick={e => { e.stopPropagation(); setChangeUATTarget({ project: p, change: c }); }}>
-                  Update UAT
-                </button>
-              );
-            })()}
+              })()}
             {!thisProjConcern && !isRaisingConcern && (
-              <button className="btn btn--xs btn--ghost ism-raise-concern-btn"
-                onClick={e => {
+              <button
+                className="btn btn--xs btn--ghost ism-raise-concern-btn"
+                onClick={(e) => {
                   e.stopPropagation();
                   setConcernChangeId(c.cgmp_changeid);
                   setConcernProjectId(p.cgmp_projectid);
                   setConcernType('');
                   setConcernSeverity('Medium');
                   setConcernRemarks('');
-                }}>
+                }}
+              >
                 ⚠ Concern
               </button>
             )}
@@ -622,35 +849,61 @@ export default function ISMChangesTab({
                   <div key={i} className="ism-concern-other-item">
                     <span className="ism-concern-other-item__project">{ce.projectName}</span>
                     <span className="ism-concern-other-item__sep">·</span>
-                    <span className="ism-concern-other-item__type" style={{
-                      background: `${CONCERN_COLORS[ce.concernType]}18`,
-                      color: CONCERN_COLORS[ce.concernType] ?? 'var(--text-secondary)',
-                    }}>{CONCERN_LABELS[ce.concernType] ?? ce.concernType}</span>
+                    <span
+                      className="ism-concern-other-item__type"
+                      style={{
+                        background: `${CONCERN_COLORS[ce.concernType]}18`,
+                        color: CONCERN_COLORS[ce.concernType] ?? 'var(--text-secondary)',
+                      }}
+                    >
+                      {CONCERN_LABELS[ce.concernType] ?? ce.concernType}
+                    </span>
                     {ce.remarks && <span className="ism-concern-other-item__remarks">{ce.remarks}</span>}
-                    <span className="ism-concern-other-item__date">{new Date(ce.timestamp).toLocaleDateString(undefined, { timeZone: getDisplayTimezone() })}</span>
+                    <span className="ism-concern-other-item__date">
+                      {new Date(ce.timestamp).toLocaleDateString(undefined, { timeZone: getDisplayTimezone() })}
+                    </span>
                   </div>
                 ))}
               </div>
             )}
             {thisProjConcern ? (
-              <div className="ism-concern-own" style={{ borderLeftColor: thisProjConcern.resolvedAt ? 'var(--success)' : (CONCERN_COLORS[thisProjConcern.concernType] ?? 'var(--border)') }}>
+              <div
+                className="ism-concern-own"
+                style={{
+                  borderLeftColor: thisProjConcern.resolvedAt
+                    ? 'var(--success)'
+                    : (CONCERN_COLORS[thisProjConcern.concernType] ?? 'var(--border)'),
+                }}
+              >
                 <span className="ism-concern-own__icon">{thisProjConcern.resolvedAt ? '✓' : '⚠'}</span>
                 <div className="ism-concern-own__body">
                   <div className="ism-concern-own__header">
-                    <span className="ism-concern-own__label">{thisProjConcern.resolvedAt ? 'Concern resolved' : 'Your concern'}</span>
-                    <span className="ism-concern-own__type-badge" style={{
-                      background: `${CONCERN_COLORS[thisProjConcern.concernType]}18`,
-                      color: CONCERN_COLORS[thisProjConcern.concernType] ?? 'var(--text-secondary)',
-                    }}>{CONCERN_LABELS[thisProjConcern.concernType] ?? thisProjConcern.concernType}</span>
+                    <span className="ism-concern-own__label">
+                      {thisProjConcern.resolvedAt ? 'Concern resolved' : 'Your concern'}
+                    </span>
+                    <span
+                      className="ism-concern-own__type-badge"
+                      style={{
+                        background: `${CONCERN_COLORS[thisProjConcern.concernType]}18`,
+                        color: CONCERN_COLORS[thisProjConcern.concernType] ?? 'var(--text-secondary)',
+                      }}
+                    >
+                      {CONCERN_LABELS[thisProjConcern.concernType] ?? thisProjConcern.concernType}
+                    </span>
                     {thisProjConcern.severity && (
-                      <span className="ism-concern-severity" style={{ color: CONCERN_SEVERITY_COLORS[thisProjConcern.severity] }}>
+                      <span
+                        className="ism-concern-severity"
+                        style={{ color: CONCERN_SEVERITY_COLORS[thisProjConcern.severity] }}
+                      >
                         {thisProjConcern.severity}
                       </span>
                     )}
                   </div>
                   {thisProjConcern.remarks && <p className="ism-concern-own__remarks">{thisProjConcern.remarks}</p>}
                   {thisProjConcern.resolvedAt && (
-                    <p className="ism-concern-resolution">Resolved by {thisProjConcern.resolvedBy} · {thisProjConcern.resolution}</p>
+                    <p className="ism-concern-resolution">
+                      Resolved by {thisProjConcern.resolvedBy} · {thisProjConcern.resolution}
+                    </p>
                   )}
                 </div>
               </div>
@@ -664,7 +917,12 @@ export default function ISMChangesTab({
   };
 
   /* ── Shared accordion header renderer ── */
-  const renderAccordionHeader = (c: Cgmp_changes, impProjects: Cgmp_projects[], showFavBtn: boolean, showNonUATTag: boolean) => {
+  const renderAccordionHeader = (
+    c: Cgmp_changes,
+    impProjects: Cgmp_projects[],
+    showFavBtn: boolean,
+    showNonUATTag: boolean
+  ) => {
     const sc = c.cgmp_status as unknown as number;
     const rc = c.cgmp_risklevel as unknown as number;
     const isExpanded = expandedChanges.has(c.cgmp_changeid);
@@ -676,18 +934,39 @@ export default function ISMChangesTab({
         role="button"
         tabIndex={0}
         aria-expanded={isExpanded}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleChange(c.cgmp_changeid); } }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleChange(c.cgmp_changeid);
+          }
+        }}
       >
-        <svg className={`ism-change-block__chevron ${isExpanded ? 'ism-change-block__chevron--open' : ''}`}
-          width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <svg
+          className={`ism-change-block__chevron ${isExpanded ? 'ism-change-block__chevron--open' : ''}`}
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
           <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
         </svg>
         <div className="ism-change-block__info">
           <div className="ism-change-block__top">
             <span className="change-number">{c.cgmp_changenumber}</span>
-            <span className="ism-change-block__title" title={c.cgmp_title ?? ''}>{c.cgmp_title}</span>
+            <span className="ism-change-block__title" title={c.cgmp_title ?? ''}>
+              {c.cgmp_title}
+            </span>
             {showNonUATTag && (
-              <span className="badge" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: 10, border: '1px solid var(--border)', marginLeft: 4 }}>
+              <span
+                className="badge"
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 10,
+                  border: '1px solid var(--border)',
+                  marginLeft: 4,
+                }}
+              >
                 Non-UAT
               </span>
             )}
@@ -697,16 +976,27 @@ export default function ISMChangesTab({
             <span className={`badge badge--risk ${riskColor(rc)}`}>{riskLabel(rc)}</span>
             {c.cgmp_starttime && (
               <span className="ism-change-block__dates">
-                {fmtDate(c.cgmp_starttime)}<span className="ism-date-sep"> → </span>{fmtDate(c.cgmp_endtime)}
+                {fmtDate(c.cgmp_starttime)}
+                <span className="ism-date-sep"> → </span>
+                {fmtDate(c.cgmp_endtime)}
               </span>
             )}
-            {!showNonUATTag && c.cgmp_starttime && !isIsmFrozen(c.cgmp_starttime) && (() => {
-              const d = daysUntilIsmFreeze(c.cgmp_starttime);
-              const cls = d <= 3 ? 'sla-chip--red' : d <= 7 ? 'sla-chip--amber' : 'sla-chip--green';
-              return <span className={`sla-chip ${cls}`} title="Days until ISM UAT freeze">{d}d to freeze</span>;
-            })()}
+            {!showNonUATTag &&
+              c.cgmp_starttime &&
+              !isIsmFrozen(c.cgmp_starttime) &&
+              (() => {
+                const d = daysUntilIsmFreeze(c.cgmp_starttime);
+                const cls = d <= 3 ? 'sla-chip--red' : d <= 7 ? 'sla-chip--amber' : 'sla-chip--green';
+                return (
+                  <span className={`sla-chip ${cls}`} title="Days until ISM UAT freeze">
+                    {d}d to freeze
+                  </span>
+                );
+              })()}
             {!showNonUATTag && c.cgmp_starttime && isIsmFrozen(c.cgmp_starttime) && (
-              <span className="sla-chip sla-chip--red" title="ISM UAT freeze period is active">Frozen</span>
+              <span className="sla-chip sla-chip--red" title="ISM UAT freeze period is active">
+                Frozen
+              </span>
             )}
             {showNonUATTag && (c.cgmp_status as unknown as number) === STATUS.Released && (
               <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>
@@ -721,7 +1011,10 @@ export default function ISMChangesTab({
         {showFavBtn && (
           <button
             className={`btn btn--xs ${favChangeIds.has(c.cgmp_changeid) ? 'btn--primary' : 'btn--outline'} ism-view-change-btn`}
-            onClick={e => { e.stopPropagation(); toggleFavChange(c.cgmp_changeid); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavChange(c.cgmp_changeid);
+            }}
             title={favChangeIds.has(c.cgmp_changeid) ? 'Remove bookmark' : 'Bookmark this change'}
             aria-pressed={favChangeIds.has(c.cgmp_changeid)}
             style={{ minWidth: 28, padding: '0 6px' }}
@@ -731,7 +1024,10 @@ export default function ISMChangesTab({
         )}
         <button
           className="btn btn--xs btn--outline ism-view-change-btn"
-          onClick={e => { e.stopPropagation(); setViewChangeDetail(c); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setViewChangeDetail(c);
+          }}
           title="View change details"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -751,31 +1047,32 @@ export default function ISMChangesTab({
           No active changes currently impacting your projects.
           <br />
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, display: 'block' }}>
-            Changes appear here when they have status Released, In Progress, or Under Review
-            and are linked to a project where you are the Primary ISM.
+            Changes appear here when they have status Released, In Progress, or Under Review and are linked to a project
+            where you are the Primary ISM.
           </span>
         </div>
       );
     }
-    const filtered = impactedChanges.filter(({ change: c }) => !showFavChangesOnly || favChangeIds.has(c.cgmp_changeid));
+    const filtered = impactedChanges.filter(
+      ({ change: c }) => !showFavChangesOnly || favChangeIds.has(c.cgmp_changeid)
+    );
     return (
       <div className="ism-change-accordion">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <button
             className={`btn btn--xs ${showFavChangesOnly ? 'btn--primary' : 'btn--outline'}`}
-            onClick={() => setShowFavChangesOnly(p => !p)}
+            onClick={() => setShowFavChangesOnly((p) => !p)}
             title="Show only bookmarked changes"
           >
-            ★ {showFavChangesOnly ? 'All Changes' : `Bookmarks${favChangeIds.size > 0 ? ` (${favChangeIds.size})` : ''}`}
+            ★{' '}
+            {showFavChangesOnly ? 'All Changes' : `Bookmarks${favChangeIds.size > 0 ? ` (${favChangeIds.size})` : ''}`}
           </button>
         </div>
         {filtered.map(({ change: c, projects: impProjects }) => (
           <div key={c.cgmp_changeid} className="ism-change-block">
             {renderAccordionHeader(c, impProjects, true, false)}
             {expandedChanges.has(c.cgmp_changeid) && (
-              <div className="ism-change-block__projects">
-                {impProjects.map(p => renderProjectRow(c, p, true))}
-              </div>
+              <div className="ism-change-block__projects">{impProjects.map((p) => renderProjectRow(c, p, true))}</div>
             )}
           </div>
         ))}
@@ -791,8 +1088,8 @@ export default function ISMChangesTab({
           No active non-UAT changes currently impacting your projects.
           <br />
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, display: 'block' }}>
-            Non-UAT changes appear here when they are Published, Under Review, or Released
-            and are linked to a project where you are the Primary ISM.
+            Non-UAT changes appear here when they are Published, Under Review, or Released and are linked to a project
+            where you are the Primary ISM.
           </span>
         </div>
       );
@@ -805,11 +1102,21 @@ export default function ISMChangesTab({
             {expandedChanges.has(c.cgmp_changeid) && (
               <div className="ism-change-block__projects">
                 {c.cgmp_description && (
-                  <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-light)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    <strong style={{ color: 'var(--text-primary)' }}>Description: </strong>{c.cgmp_description}
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      background: 'var(--bg-secondary)',
+                      borderBottom: '1px solid var(--border-light)',
+                      fontSize: 13,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    <strong style={{ color: 'var(--text-primary)' }}>Description: </strong>
+                    {c.cgmp_description}
                   </div>
                 )}
-                {impProjects.map(p => renderProjectRow(c, p, false))}
+                {impProjects.map((p) => renderProjectRow(c, p, false))}
               </div>
             )}
           </div>
@@ -823,7 +1130,11 @@ export default function ISMChangesTab({
       {activeTab === 'changes' ? renderChangesTab() : renderNonUATTab()}
 
       <ProjectViewPanel open={!!viewProject} project={viewProject} onClose={() => setViewProject(null)} />
-      <ChangeDetailPanel open={!!viewChangeDetail} change={viewChangeDetail} onClose={() => setViewChangeDetail(null)} />
+      <ChangeDetailPanel
+        open={!!viewChangeDetail}
+        change={viewChangeDetail}
+        onClose={() => setViewChangeDetail(null)}
+      />
       <ChangeUATContactPanel
         open={!!changeUATTarget}
         onClose={() => setChangeUATTarget(null)}

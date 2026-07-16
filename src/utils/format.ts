@@ -1,5 +1,8 @@
 /** Shared formatting utilities — single canonical source for all date/number formatting */
 
+import { formatDistanceToNow, isToday as isTodayFns, parseISO, differenceInMinutes } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+
 const TZ_KEY = 'cgmp-display-tz';
 
 let _tzCache: string | null = null;
@@ -17,7 +20,11 @@ export function getDisplayTimezone(): string {
 
 export function setDisplayTimezone(tz: string): void {
   _tzCache = tz;
-  try { localStorage.setItem(TZ_KEY, tz); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(TZ_KEY, tz);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Format an ISO datetime in the user's selected display timezone */
@@ -28,15 +35,25 @@ export function formatInTz(iso: string | undefined | null, opts?: Intl.DateTimeF
   const tz = getDisplayTimezone();
   try {
     return d.toLocaleString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      timeZone: tz, timeZoneName: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: tz,
+      timeZoneName: 'short',
       ...opts,
     });
   } catch {
     const fallbackTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return d.toLocaleString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      timeZone: fallbackTz, timeZoneName: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: fallbackTz,
+      timeZoneName: 'short',
       ...opts,
     });
   }
@@ -44,25 +61,19 @@ export function formatInTz(iso: string | undefined | null, opts?: Intl.DateTimeF
 
 export function fmtDate(iso: string | undefined | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  const tz = getDisplayTimezone();
   try {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: tz });
+    return formatInTimeZone(parseISO(iso), getDisplayTimezone(), 'dd MMM yyyy');
   } catch {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return iso;
   }
 }
 
 export function fmtDateTime(iso: string | undefined | null): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  const tz = getDisplayTimezone();
   try {
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz });
+    return formatInTimeZone(parseISO(iso), getDisplayTimezone(), 'dd MMM yyyy, HH:mm');
   } catch {
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return iso;
   }
 }
 
@@ -72,7 +83,13 @@ export function fmtDateTimeShort(iso: string | undefined | null): string {
   if (isNaN(d.getTime())) return '—';
   const tz = getDisplayTimezone();
   try {
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz });
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: tz,
+    });
   } catch {
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
@@ -141,24 +158,29 @@ export function fmtShortDate(iso: string | undefined | null): string {
 
 export function isToday(iso: string | undefined | null): boolean {
   if (!iso) return false;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return false;
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  try {
+    return isTodayFns(parseISO(iso));
+  } catch {
+    return false;
+  }
 }
 
 export function timeAgo(iso: string | undefined): string {
   if (!iso) return '';
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(ms / 60000);
-  const h = Math.floor(ms / 3600000);
-  const d = Math.floor(ms / 86400000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  if (h < 24) return `${h}h ago`;
-  if (d === 1) return 'Yesterday';
-  if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: getDisplayTimezone() });
+  try {
+    return formatDistanceToNow(parseISO(iso), { addSuffix: true });
+  } catch {
+    return iso;
+  }
+}
+
+/** Returns the number of hours between two ISO datetime strings (end − start). */
+export function durationHours(startIso: string, endIso: string): number {
+  try {
+    return differenceInMinutes(parseISO(endIso), parseISO(startIso)) / 60;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -168,4 +190,18 @@ export function timeAgo(iso: string | undefined): string {
  */
 export function isValidTeamsUrl(url: string | null | undefined): boolean {
   return !!url && url.startsWith('https://teams.microsoft.com/');
+}
+
+/**
+ * Escapes HTML special characters in a raw string to prevent XSS at
+ * dangerouslySetInnerHTML render sites where content is user-supplied.
+ * Preserves the text as-is — callers may additionally replace \n with <br>.
+ */
+export function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

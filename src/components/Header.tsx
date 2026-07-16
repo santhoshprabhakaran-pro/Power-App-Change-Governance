@@ -1,41 +1,68 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
 import { useApp } from '../context/AppContext';
-import { useChangeList, useProjects } from '../hooks/useDataverse';
-import { statusLabel, statusColor } from '../utils/roles';
+import { useChangeList, useProjects, useAllBridges, useSystemUsers } from '../hooks/useDataverse';
+import { usePermissions } from '../hooks/usePermissions';
+import { Cgmp_auditlogsService } from '../generated';
 import type { Cgmp_changes } from '../generated/models/Cgmp_changesModel';
 import type { Cgmp_projects } from '../generated/models/Cgmp_projectsModel';
+import type { Cgmp_bridges } from '../generated/models/Cgmp_bridgesModel';
+import type { Systemusers } from '../generated/models/SystemusersModel';
+import type { Cgmp_auditlogs } from '../generated/models/Cgmp_auditlogsModel';
 
 /* ── Recent pages helpers ── */
 const RECENT_PAGES_KEY = 'cgmp-recent-pages';
-interface RecentPage { page: string; label: string; time: number; }
+interface RecentPage {
+  page: string;
+  label: string;
+  time: number;
+}
 
 const PAGE_LABELS: Record<string, string> = {
-  dashboard: 'Dashboard', pmo: 'PMO Workspace', itops: 'IT Ops Workspace',
-  ism: 'ISM Workspace', giicc: 'GIICC Command Center', knowledge: 'Knowledge Base',
-  reports: 'Reports', 'scheduling-calendar': 'Scheduling Calendar', tasks: 'Task Manager',
-  settings: 'Settings', admin: 'Admin Dashboard', project: 'Project Repository',
-  attachment: 'Attachment Repository', powerbi: 'Power BI Analytics', heatmap: 'Heat Maps',
-  leaderboard: 'Leaderboards', audit: 'Audit Center', archive: 'Archive Center',
-  'notification-center': 'Notification Center', security: 'Security & Roles',
-  'notif-prefs': 'Notification Preferences', 'notification-rules': 'Notification Rules',
-  'change-templates': 'Change Templates', 'blackout-calendar': 'Blackout Calendar',
+  dashboard: 'Dashboard',
+  pmo: 'PMO Workspace',
+  itops: 'IT Ops Workspace',
+  ism: 'ISM Workspace',
+  giicc: 'GIICC Command Center',
+  knowledge: 'Knowledge Base',
+  reports: 'Reports',
+  'scheduling-calendar': 'Scheduling Calendar',
+  tasks: 'Task Manager',
+  settings: 'Settings',
+  admin: 'Admin Dashboard',
+  project: 'Project Repository',
+  attachment: 'Attachment Repository',
+  powerbi: 'Power BI Analytics',
+  heatmap: 'Heat Maps',
+  leaderboard: 'Leaderboards',
+  audit: 'Audit Center',
+  archive: 'Archive Center',
+  'notification-center': 'Notification Center',
+  security: 'Security & Roles',
+  'notif-prefs': 'Notification Preferences',
+  'notification-rules': 'Notification Rules',
+  'change-templates': 'Change Templates',
+  'blackout-calendar': 'Blackout Calendar',
 };
 
 function loadRecentPages(): RecentPage[] {
   try {
     const raw = localStorage.getItem(RECENT_PAGES_KEY);
     if (raw) return JSON.parse(raw) as RecentPage[];
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return [];
 }
 
 function saveRecentPage(page: string): void {
   try {
     const label = PAGE_LABELS[page] ?? page;
-    const existing = loadRecentPages().filter(p => p.page !== page);
+    const existing = loadRecentPages().filter((p) => p.page !== page);
     const updated: RecentPage[] = [{ page, label, time: Date.now() }, ...existing].slice(0, 5);
     localStorage.setItem(RECENT_PAGES_KEY, JSON.stringify(updated));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 interface HeaderProps {
@@ -52,9 +79,49 @@ interface HeaderProps {
 
 /* ── Search overlay (loaded lazily when user types) ── */
 const PMO_FILTER_KEY = 'pmo-changelist-filters';
-const PMO_FILTER_DEFAULTS = { search: '', status: '', risk: '', category: '', dateRange: 'all', customFrom: '', customTo: '' };
+const PMO_FILTER_DEFAULTS = {
+  search: '',
+  status: '',
+  risk: '',
+  category: '',
+  dateRange: 'all',
+  customFrom: '',
+  customTo: '',
+};
 
-type NavResult = { page: string; sub: string; label: string };
+type NavResult = { page: string; sub: string; label: string; type: string };
+
+/* ── G3-12: Extended search result types ── */
+type ExtResultType = 'change' | 'project' | 'bridge' | 'user' | 'audit';
+type ExtResult = {
+  id: string;
+  label: string;
+  sublabel?: string;
+  icon: string;
+  type: ExtResultType;
+  page: string;
+  sub: string;
+};
+
+type SearchData = {
+  changes: Cgmp_changes[];
+  projects: Cgmp_projects[];
+  bridges: Cgmp_bridges[];
+  users: Systemusers[];
+  audits: Cgmp_auditlogs[];
+};
+
+const EMPTY_SEARCH_DATA: SearchData = { changes: [], projects: [], bridges: [], users: [], audits: [] };
+
+const SECTION_LABELS: Record<ExtResultType, string> = {
+  change: 'Changes',
+  project: 'Projects',
+  bridge: 'Bridges',
+  user: 'Users',
+  audit: 'Audit Events',
+};
+
+const SECTION_ORDER: ExtResultType[] = ['change', 'project', 'bridge', 'user', 'audit'];
 
 const NAVIGATE_COMMANDS = [
   { page: 'dashboard', label: 'Dashboard', shortcut: '' },
@@ -76,60 +143,200 @@ const CREATE_COMMANDS = [
   { page: 'knowledge', label: 'New Knowledge Base Article', hint: '' },
 ];
 
-const OBSERVER_ROLE = 100000005;
-
-function CommandPalette({ onNavigate, onClose, listboxId, onOpenNotificationPanel }: {
+function CommandPalette({
+  onNavigate,
+  onClose,
+  listboxId,
+  onOpenNotificationPanel,
+}: {
   onNavigate: (page: string, searchTerm?: string) => void;
   onClose: () => void;
   listboxId: string;
   onOpenNotificationPanel: () => void;
 }) {
-  const { userProfile } = useApp();
-  const userRole = Number(userProfile?.cgmp_role ?? -1);
-  const isObserver = userRole === OBSERVER_ROLE;
+  const { isObserver } = usePermissions();
 
   const ACTIONS = [
-    ...(!isObserver ? [{ label: 'New Emergency Change', icon: '🚨', action: () => { onNavigate('pmo'); onClose(); } }] : []),
-    { label: 'Mark All Notifications Read', icon: '✓', action: () => { onOpenNotificationPanel(); onClose(); } },
-    { label: 'Export Change List', icon: '⬇', action: () => { onNavigate('pmo'); onClose(); } },
+    ...(!isObserver
+      ? [
+          {
+            label: 'New Emergency Change',
+            icon: '🚨',
+            action: () => {
+              onNavigate('pmo');
+              onClose();
+            },
+          },
+        ]
+      : []),
+    {
+      label: 'Mark All Notifications Read',
+      icon: '✓',
+      action: () => {
+        onOpenNotificationPanel();
+        onClose();
+      },
+    },
+    {
+      label: 'Export Change List',
+      icon: '⬇',
+      action: () => {
+        onNavigate('pmo');
+        onClose();
+      },
+    },
   ];
 
   const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
-  useEffect(() => { setRecentPages(loadRecentPages()); }, []);
+  useEffect(() => {
+    setRecentPages(loadRecentPages());
+  }, []);
 
   return (
-    <div id={listboxId} className="search-overlay" role="listbox" aria-label="Command palette" style={{ maxHeight: 420, overflowY: 'auto' }}>
+    <div
+      id={listboxId}
+      className="search-overlay"
+      role="listbox"
+      aria-label="Command palette"
+      style={{ maxHeight: 420, overflowY: 'auto' }}
+    >
       {recentPages.length > 0 && (
         <>
-          <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>RECENT</div>
+          <div
+            style={{
+              padding: '6px 12px 4px',
+              fontSize: 10,
+              fontWeight: 700,
+              color: 'var(--text-tertiary)',
+              letterSpacing: '0.08em',
+            }}
+          >
+            RECENT
+          </div>
           {recentPages.map((r, i) => (
-            <div key={i} role="option" tabIndex={-1} aria-selected={false} className="search-result" onClick={() => { onNavigate(r.page); onClose(); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(r.page); onClose(); } }}>
+            <div
+              key={i}
+              role="option"
+              tabIndex={-1}
+              aria-selected={false}
+              className="search-result"
+              onClick={() => {
+                onNavigate(r.page);
+                onClose();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onNavigate(r.page);
+                  onClose();
+                }
+              }}
+            >
               <span className="search-result__type">Recent</span>
               <span className="search-result__label">{r.label}</span>
             </div>
           ))}
         </>
       )}
-      <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>NAVIGATE</div>
+      <div
+        style={{
+          padding: '6px 12px 4px',
+          fontSize: 10,
+          fontWeight: 700,
+          color: 'var(--text-tertiary)',
+          letterSpacing: '0.08em',
+        }}
+      >
+        NAVIGATE
+      </div>
       {NAVIGATE_COMMANDS.map((cmd, i) => (
-        <div key={i} role="option" tabIndex={-1} aria-selected={false} className="search-result" onClick={() => { onNavigate(cmd.page); onClose(); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(cmd.page); onClose(); } }}>
+        <div
+          key={i}
+          role="option"
+          tabIndex={-1}
+          aria-selected={false}
+          className="search-result"
+          onClick={() => {
+            onNavigate(cmd.page);
+            onClose();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigate(cmd.page);
+              onClose();
+            }
+          }}
+        >
           <span className="search-result__type">Page</span>
           <span className="search-result__label">{cmd.label}</span>
           {cmd.shortcut && <span className="search-result__sub">{cmd.shortcut}</span>}
         </div>
       ))}
-      <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>CREATE</div>
+      <div
+        style={{
+          padding: '6px 12px 4px',
+          fontSize: 10,
+          fontWeight: 700,
+          color: 'var(--text-tertiary)',
+          letterSpacing: '0.08em',
+        }}
+      >
+        CREATE
+      </div>
       {CREATE_COMMANDS.map((cmd, i) => (
-        <div key={i} role="option" tabIndex={-1} aria-selected={false} className="search-result" onClick={() => { onNavigate(cmd.page); onClose(); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(cmd.page); onClose(); } }}>
+        <div
+          key={i}
+          role="option"
+          tabIndex={-1}
+          aria-selected={false}
+          className="search-result"
+          onClick={() => {
+            onNavigate(cmd.page);
+            onClose();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigate(cmd.page);
+              onClose();
+            }
+          }}
+        >
           <span className="search-result__type">Action</span>
           <span className="search-result__label">{cmd.label}</span>
           {cmd.hint && <span className="search-result__sub">{cmd.hint}</span>}
         </div>
       ))}
-      <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>ACTIONS</div>
+      <div
+        style={{
+          padding: '6px 12px 4px',
+          fontSize: 10,
+          fontWeight: 700,
+          color: 'var(--text-tertiary)',
+          letterSpacing: '0.08em',
+        }}
+      >
+        ACTIONS
+      </div>
       {ACTIONS.map((a, i) => (
-        <div key={i} role="option" tabIndex={-1} aria-selected={false} className="search-result" onClick={a.action} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); a.action(); } }}>
-          <span className="search-result__type" aria-hidden="true">{a.icon}</span>
+        <div
+          key={i}
+          role="option"
+          tabIndex={-1}
+          aria-selected={false}
+          className="search-result"
+          onClick={a.action}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              a.action();
+            }
+          }}
+        >
+          <span className="search-result__type" aria-hidden="true">
+            {a.icon}
+          </span>
           <span className="search-result__label">{a.label}</span>
         </div>
       ))}
@@ -143,7 +350,9 @@ function CommandPalette({ onNavigate, onClose, listboxId, onOpenNotificationPane
 function KeyboardShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
@@ -159,15 +368,47 @@ function KeyboardShortcutsModal({ open, onClose }: { open: boolean; onClose: () 
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg, 12px)', padding: 24, minWidth: 340, boxShadow: 'var(--shadow-lg)' }} onClick={e => e.stopPropagation()}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          padding: 24,
+          minWidth: 340,
+          boxShadow: 'var(--shadow-lg)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Keyboard Shortcuts</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            {shortcuts.map(s => (
+            {shortcuts.map((s) => (
               <tr key={s.keys} style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <td style={{ padding: '8px 12px 8px 0' }}>
-                  <kbd style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', fontSize: 12, fontFamily: 'monospace' }}>{s.keys}</kbd>
+                  <kbd
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 4,
+                      padding: '2px 6px',
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {s.keys}
+                  </kbd>
                 </td>
                 <td style={{ padding: '8px 0', fontSize: 14, color: 'var(--text-primary)' }}>{s.desc}</td>
               </tr>
@@ -175,35 +416,137 @@ function KeyboardShortcutsModal({ open, onClose }: { open: boolean; onClose: () 
           </tbody>
         </table>
         <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <button className="btn btn--sm btn--outline" onClick={onClose}>Close</button>
+          <button className="btn btn--sm btn--outline" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function SearchOverlay({ query, onNavigate, onClose, onFirstResult, listboxId, changes, projects, focusedIdx, onResultsUpdate }: { query: string; onNavigate: (page: string, searchTerm?: string) => void; onClose: () => void; onFirstResult?: (result: { type: string; page: string } | null) => void; listboxId: string; changes: Cgmp_changes[]; projects: Cgmp_projects[]; focusedIdx: number; onResultsUpdate: (results: NavResult[]) => void }) {
-  const results = useMemo(() => {
+/* ── G3-12: Grouped search overlay with section headers and icons ── */
+function SearchOverlay({
+  query,
+  onNavigate,
+  onClose,
+  onFirstResult,
+  listboxId,
+  searchData,
+  focusedIdx,
+  onResultsUpdate,
+}: {
+  query: string;
+  onNavigate: (page: string, searchTerm?: string) => void;
+  onClose: () => void;
+  onFirstResult?: (result: { type: string; page: string } | null) => void;
+  listboxId: string;
+  searchData: SearchData;
+  focusedIdx: number;
+  onResultsUpdate: (results: NavResult[]) => void;
+}) {
+  const { changes, projects, bridges, users, audits } = searchData;
+
+  const results = useMemo<ExtResult[]>(() => {
     const q = query.toLowerCase().trim();
     if (q.length < 2) return [];
 
-    const changeHits = changes
-      .filter(c => c.cgmp_title?.toLowerCase().includes(q) || c.cgmp_changenumber?.toLowerCase().includes(q))
+    const changeHits: ExtResult[] = changes
+      .filter((c) => c.cgmp_title?.toLowerCase().includes(q) || c.cgmp_changenumber?.toLowerCase().includes(q))
       .slice(0, 5)
-      .map((c: Cgmp_changes) => ({ type: 'change' as const, displayType: 'Change', label: c.cgmp_title ?? c.cgmp_changenumber ?? '', sub: c.cgmp_changenumber ?? '', status: statusLabel(c.cgmp_status as unknown as number), statusClass: statusColor(c.cgmp_status as unknown as number), page: 'pmo' as string }));
+      .map((c) => ({
+        id: `change-${c.cgmp_changeid}`,
+        label: c.cgmp_title ?? c.cgmp_changenumber ?? '',
+        sublabel: c.cgmp_changenumber,
+        icon: '🔄',
+        type: 'change' as ExtResultType,
+        page: 'pmo',
+        sub: c.cgmp_changenumber ?? '',
+      }));
 
-    const projHits = projects
-      .filter(p => p.cgmp_name?.toLowerCase().includes(q) || p.cgmp_customer?.toLowerCase().includes(q))
+    const projHits: ExtResult[] = projects
+      .filter((p) => p.cgmp_name?.toLowerCase().includes(q) || p.cgmp_customer?.toLowerCase().includes(q))
       .slice(0, 3)
-      .map((p: Cgmp_projects) => ({ type: 'project', displayType: 'Project', label: p.cgmp_name ?? '', sub: p.cgmp_region ?? p.cgmp_customer ?? '', page: 'project' as string }));
+      .map((p) => ({
+        id: `project-${p.cgmp_projectid}`,
+        label: p.cgmp_name ?? '',
+        sublabel: p.cgmp_customer ?? p.cgmp_region ?? undefined,
+        icon: '📁',
+        type: 'project' as ExtResultType,
+        page: 'project',
+        sub: p.cgmp_name ?? '',
+      }));
 
-    return [...changeHits, ...projHits];
-  }, [changes, projects, query]);
+    const bridgeHits: ExtResult[] = bridges
+      .filter((b) => b.cgmp_title?.toLowerCase().includes(q) || b.cgmp_changenumber?.toLowerCase().includes(q))
+      .slice(0, 20)
+      .map((b) => ({
+        id: `bridge-${b.cgmp_bridgeid}`,
+        label: b.cgmp_title ?? b.cgmp_bridgeid,
+        sublabel: b.cgmp_changenumber ?? undefined,
+        icon: '🔗',
+        type: 'bridge' as ExtResultType,
+        page: 'itops',
+        sub: b.cgmp_title ?? '',
+      }));
+
+    const userHits: ExtResult[] = users
+      .filter((u) => u.fullname?.toLowerCase().includes(q) || u.internalemailaddress?.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((u) => ({
+        id: `user-${u.systemuserid}`,
+        label: u.fullname ?? u.domainname ?? '',
+        sublabel: u.internalemailaddress ?? undefined,
+        icon: '👤',
+        type: 'user' as ExtResultType,
+        page: 'security',
+        sub: u.fullname ?? '',
+      }));
+
+    const auditHits: ExtResult[] = audits
+      .filter(
+        (a) =>
+          a.cgmp_eventtypename?.toLowerCase().includes(q) ||
+          a.cgmp_entityname?.toLowerCase().includes(q) ||
+          a.cgmp_username?.toLowerCase().includes(q)
+      )
+      .slice(0, 5)
+      .map((a) => ({
+        id: `audit-${a.cgmp_auditlogid}`,
+        label: a.cgmp_eventtypename ?? a.cgmp_auditlogname ?? '',
+        sublabel: a.cgmp_entityname ?? a.cgmp_username ?? undefined,
+        icon: '📋',
+        type: 'audit' as ExtResultType,
+        page: 'audit',
+        sub: '',
+      }));
+
+    return [...changeHits, ...projHits, ...bridgeHits, ...userHits, ...auditHits];
+  }, [changes, projects, bridges, users, audits, query]);
+
+  /* Flat nav results for keyboard navigation */
+  const flatNavResults = useMemo<NavResult[]>(
+    () => results.map((r) => ({ page: r.page, sub: r.sub, label: r.label, type: r.type })),
+    [results]
+  );
 
   useEffect(() => {
     onFirstResult?.(results.length > 0 ? { type: results[0].type, page: results[0].page } : null);
-    onResultsUpdate(results);
-  }, [results, onFirstResult, onResultsUpdate]);
+    onResultsUpdate(flatNavResults);
+  }, [results, flatNavResults, onFirstResult, onResultsUpdate]);
+
+  /* Group by type, preserving SECTION_ORDER */
+  const grouped = useMemo(() => {
+    const map = new Map<ExtResultType, ExtResult[]>();
+    for (const r of results) {
+      if (!map.has(r.type)) map.set(r.type, []);
+      map.get(r.type)!.push(r);
+    }
+    return SECTION_ORDER.map((t) => ({ type: t, items: map.get(t) ?? [] })).filter((g) => g.items.length > 0);
+  }, [results]);
+
+  /* Build flat id list for focusedIdx → id mapping */
+  const flatIds = useMemo(() => results.map((r) => r.id), [results]);
 
   if (results.length === 0 && query.length >= 2) {
     return (
@@ -217,22 +560,36 @@ function SearchOverlay({ query, onNavigate, onClose, onFirstResult, listboxId, c
 
   return (
     <div id={listboxId} className="search-overlay" role="listbox" aria-label="Search results">
-      {results.map((r, i) => (
-        <div key={i} id={`${listboxId}-option-${i}`} role="option" tabIndex={-1} aria-selected={i === focusedIdx} className={`search-result${i === focusedIdx ? ' header__search-result--focused' : ''}`} onClick={() => { onNavigate(r.page, r.sub || r.label); onClose(); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(r.page, r.sub || r.label); onClose(); } }}>
-          <span className="search-result__type">{r.displayType}</span>
-          <span className="search-result__label">{r.label}</span>
-          {r.type === 'change' ? (
-            <div className="search-result-item__header">
-              <span className="search-result-item__number">{r.sub}</span>
-              {'status' in r && (r as unknown as { status: string; statusClass: string }).status && (
-                <span className={`badge badge--status ${(r as unknown as { status: string; statusClass: string }).statusClass}`}>
-                  {(r as unknown as { status: string; statusClass: string }).status}
+      {grouped.map(({ type, items }) => (
+        <div key={type}>
+          <div className="cmd-palette__section-header">{SECTION_LABELS[type]}</div>
+          {items.map((r) => {
+            const flatIdx = flatIds.indexOf(r.id);
+            const isFocused = flatIdx === focusedIdx;
+            return (
+              <button
+                key={r.id}
+                id={`${listboxId}-option-${flatIdx}`}
+                role="option"
+                aria-selected={isFocused}
+                className={`cmd-palette__item${isFocused ? ' cmd-palette__item--focused' : ''}`}
+                onClick={() => {
+                  onNavigate(r.page, r.sub || r.label);
+                  onClose();
+                }}
+              >
+                <span aria-hidden="true" style={{ marginRight: 8 }}>
+                  {r.icon}
                 </span>
-              )}
-            </div>
-          ) : (
-            r.sub && <span className="search-result__sub">{r.sub}</span>
-          )}
+                <span style={{ flex: 1, textAlign: 'left' }}>{r.label}</span>
+                {r.sublabel && (
+                  <span className="cmd-palette__sublabel" style={{ marginLeft: 8, fontSize: 11, opacity: 0.6 }}>
+                    {r.sublabel}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       ))}
       <div className="search-footer">
@@ -243,26 +600,55 @@ function SearchOverlay({ query, onNavigate, onClose, onFirstResult, listboxId, c
 }
 
 /* ── Lazy search data loader — only mounts after first search focus ── */
-function SearchDataProvider({ onData }: { onData: (changes: Cgmp_changes[], projects: Cgmp_projects[]) => void }) {
+function SearchDataProvider({ onData }: { onData: (data: SearchData) => void }) {
   const { changes } = useChangeList();
   const { projects } = useProjects();
-  useEffect(() => { onData(changes, projects); }, [changes, projects, onData]);
+  /* autoRefreshMs=0 → fetch once, no poll loop during search session */
+  const { bridges } = useAllBridges(0);
+  const { users } = useSystemUsers();
+  const [audits, setAudits] = useState<Cgmp_auditlogs[]>([]);
+
+  /* Fetch 30 most-recent audit entries once on mount */
+  useEffect(() => {
+    Cgmp_auditlogsService.getAll({ orderBy: ['createdon desc'], top: 30 })
+      .then((r) => setAudits(r.data ?? []))
+      .catch(() => {
+        /* best-effort — omit audits from results on error */
+      });
+  }, []);
+
+  useEffect(() => {
+    onData({ changes, projects, bridges, users, audits });
+  }, [changes, projects, bridges, users, audits, onData]);
+
   return null;
 }
 
-export default function Header({ unreadCount, highPriorityUnread = 0, theme, onThemeToggle, onOpenNotificationPanel, onToggleSidebar, sidebarExpanded, userName, userRole }: HeaderProps) {
+export default function Header({
+  unreadCount,
+  highPriorityUnread = 0,
+  theme,
+  onThemeToggle,
+  onOpenNotificationPanel,
+  onToggleSidebar,
+  sidebarExpanded,
+  userName,
+  userRole,
+}: HeaderProps) {
   const { navigate, logout } = useApp();
   const [searchActivated, setSearchActivated] = useState(false);
-  const [searchData, setSearchData] = useState<{ changes: Cgmp_changes[]; projects: Cgmp_projects[] }>({ changes: [], projects: [] });
-  const handleSearchData = useCallback((changes: Cgmp_changes[], projects: Cgmp_projects[]) => {
-    setSearchData({ changes, projects });
+  const [searchData, setSearchData] = useState<SearchData>(EMPTY_SEARCH_DATA);
+  const handleSearchData = useCallback((data: SearchData) => {
+    setSearchData(data);
   }, []);
   const [searchValue, setSearchValue] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Keep a ref in sync so the global keydown handler (with [] deps) can read it without stale closure
-  useEffect(() => { userMenuOpenRef.current = userMenuOpen; }, [userMenuOpen]);
+  useEffect(() => {
+    userMenuOpenRef.current = userMenuOpen;
+  }, [userMenuOpen]);
   const searchRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const userMenuBtnRef = useRef<HTMLButtonElement>(null);
@@ -279,7 +665,12 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
   }, []);
 
   /* Cleanup blur timer on unmount */
-  useEffect(() => () => { if (blurTimerRef.current) clearTimeout(blurTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    },
+    []
+  );
 
   const handleFirstResult = useCallback((result: { type: string; page: string } | null) => {
     firstSearchResultRef.current = result;
@@ -294,7 +685,7 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
       }
       if ((e.ctrlKey || e.metaKey) && e.key === '?') {
         e.preventDefault();
-        setShowShortcuts(s => !s);
+        setShowShortcuts((s) => !s);
       }
       if (e.key === 'Escape') {
         setSearchValue('');
@@ -339,12 +730,12 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocusedIdx(i => Math.min(i + 1, searchResultsRef.current.length - 1));
+      setFocusedIdx((i) => Math.min(i + 1, searchResultsRef.current.length - 1));
       return;
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setFocusedIdx(i => Math.max(i - 1, 0));
+      setFocusedIdx((i) => Math.max(i - 1, 0));
       return;
     }
     if (e.key === 'Enter') {
@@ -363,8 +754,19 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
         if (!first) return;
         if (first.type === 'project') {
           navigate('project');
+        } else if (first.type === 'bridge') {
+          navigate('itops');
+        } else if (first.type === 'user') {
+          navigate('security');
+        } else if (first.type === 'audit') {
+          navigate('audit');
         } else {
-          try { localStorage.setItem(PMO_FILTER_KEY, JSON.stringify({ ...PMO_FILTER_DEFAULTS, search: searchValue.trim() })); } catch {}
+          try {
+            localStorage.setItem(
+              PMO_FILTER_KEY,
+              JSON.stringify({ ...PMO_FILTER_DEFAULTS, search: searchValue.trim() })
+            );
+          } catch {}
           navigate('pmo');
         }
         setSearchValue('');
@@ -373,17 +775,28 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
     }
   };
 
-  const handleSearchNavigate = useCallback((page: string, searchTerm?: string) => {
-    if (page === 'pmo' && searchTerm) {
-      try { localStorage.setItem(PMO_FILTER_KEY, JSON.stringify({ ...PMO_FILTER_DEFAULTS, search: searchTerm })); } catch {}
-    }
-    saveRecentPage(page);
-    navigate(page);
-  }, [navigate]);
+  const handleSearchNavigate = useCallback(
+    (page: string, searchTerm?: string) => {
+      if (page === 'pmo' && searchTerm) {
+        try {
+          localStorage.setItem(PMO_FILTER_KEY, JSON.stringify({ ...PMO_FILTER_DEFAULTS, search: searchTerm }));
+        } catch {}
+      }
+      saveRecentPage(page);
+      navigate(page);
+    },
+    [navigate]
+  );
 
   return (
     <header className="header">
-      <button className="header__hamburger" onClick={onToggleSidebar} aria-label="Toggle navigation" aria-expanded={sidebarExpanded} aria-controls="sidebar-nav">
+      <button
+        className="header__hamburger"
+        onClick={onToggleSidebar}
+        aria-label="Toggle navigation"
+        aria-expanded={sidebarExpanded}
+        aria-controls="sidebar-nav"
+      >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
         </svg>
@@ -410,16 +823,24 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
             className="header__search-input"
             type="search"
             role="combobox"
-            aria-label="Search changes, projects, and users"
+            aria-label="Search changes, projects, bridges, users, and audit events"
             aria-autocomplete="list"
             aria-expanded={showSearchOverlay || showCommandPalette}
             aria-controls={searchListboxId}
             aria-owns={searchListboxId}
-            aria-activedescendant={showSearchOverlay && focusedIdx >= 0 ? `${searchListboxId}-option-${focusedIdx}` : undefined}
-            placeholder="Search changes, projects, users… (Ctrl+K)"
+            aria-activedescendant={
+              showSearchOverlay && focusedIdx >= 0 ? `${searchListboxId}-option-${focusedIdx}` : undefined
+            }
+            placeholder="Search changes, bridges, users… (Ctrl+K)"
             value={searchValue}
-            onChange={e => { setSearchValue(e.target.value); setFocusedIdx(-1); }}
-            onFocus={() => { setSearchFocused(true); setSearchActivated(true); }}
+            onChange={(e) => {
+              setSearchValue(e.target.value);
+              setFocusedIdx(-1);
+            }}
+            onFocus={() => {
+              setSearchFocused(true);
+              setSearchActivated(true);
+            }}
             onBlur={() => {
               if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
               blurTimerRef.current = setTimeout(() => setSearchFocused(false), 200);
@@ -427,8 +848,16 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
             onKeyDown={handleSearchKeyDown}
           />
           {searchValue && (
-            <button className="header__search-clear" onClick={() => { setSearchValue(''); searchRef.current?.focus(); }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <button
+              className="header__search-clear"
+              onClick={() => {
+                setSearchValue('');
+                searchRef.current?.focus();
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
             </button>
           )}
           {!searchValue && <span className="header__search-kbd">Ctrl+K</span>}
@@ -437,11 +866,14 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
           <SearchOverlay
             query={searchValue}
             onNavigate={handleSearchNavigate}
-            onClose={() => { setSearchValue(''); setSearchFocused(false); setFocusedIdx(-1); }}
+            onClose={() => {
+              setSearchValue('');
+              setSearchFocused(false);
+              setFocusedIdx(-1);
+            }}
             onFirstResult={handleFirstResult}
             listboxId={searchListboxId}
-            changes={searchData.changes}
-            projects={searchData.projects}
+            searchData={searchData}
             focusedIdx={focusedIdx}
             onResultsUpdate={handleResultsUpdate}
           />
@@ -449,7 +881,10 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
         {showCommandPalette && (
           <CommandPalette
             onNavigate={handleSearchNavigate}
-            onClose={() => { setSearchFocused(false); setFocusedIdx(-1); }}
+            onClose={() => {
+              setSearchFocused(false);
+              setFocusedIdx(-1);
+            }}
             listboxId={searchListboxId}
             onOpenNotificationPanel={onOpenNotificationPanel}
           />
@@ -477,10 +912,15 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
         </button>
 
         <button className="header__theme-btn" onClick={onThemeToggle} title="Toggle Theme">
-          {theme === 'light'
-            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z" /></svg>
-            : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" /></svg>
-          }
+          {theme === 'light' ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" />
+            </svg>
+          )}
           <span className="header__action-label">Theme</span>
         </button>
 
@@ -490,10 +930,18 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
             className="header__user"
             aria-haspopup="true"
             aria-expanded={userMenuOpen}
-            onClick={() => setUserMenuOpen(o => !o)}
+            onClick={() => setUserMenuOpen((o) => !o)}
           >
             <div className="header__user-avatar" aria-hidden="true">
-              {userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?'}
+              {userName
+                ? userName
+                    .split(' ')
+                    .filter(Boolean)
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                : '?'}
             </div>
             <div className="header__user-info">
               <span className="header__user-name">{userName}</span>
@@ -505,17 +953,47 @@ export default function Header({ unreadCount, highPriorityUnread = 0, theme, onT
           </button>
           {userMenuOpen && (
             <div className="header__user-menu" role="menu" aria-label="User menu">
-              <button ref={firstMenuItemRef} className="header__user-menu-item" role="menuitem" onClick={() => { navigate('settings'); setUserMenuOpen(false); userMenuBtnRef.current?.focus(); }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm7.43-2c.04-.32.07-.64.07-.98s-.03-.67-.07-1l2.14-1.67c.19-.15.24-.42.12-.64l-2.02-3.5c-.12-.22-.39-.3-.61-.22l-2.52 1.01c-.52-.4-1.08-.73-1.69-.98l-.38-2.68C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.68c-.61.25-1.17.59-1.69.98L4.96 5.07c-.22-.08-.49 0-.61.22L2.33 8.79c-.12.22-.07.49.12.64l2.14 1.67c-.04.32-.07.65-.07 1s.03.66.07.98l-2.14 1.67c-.19.15-.24.42-.12.64l2.02 3.5c.12.22.39.3.61.22l2.52-1.01c.52.4 1.08.73 1.69.98l.38 2.68c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.68c.61-.25 1.17-.58 1.69-.98l2.52 1.01c.22.08.49 0 .61-.22l2.02-3.5c.12-.22.07-.49-.12-.64l-2.14-1.67z"/></svg>
+              <button
+                ref={firstMenuItemRef}
+                className="header__user-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  navigate('settings');
+                  setUserMenuOpen(false);
+                  userMenuBtnRef.current?.focus();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm7.43-2c.04-.32.07-.64.07-.98s-.03-.67-.07-1l2.14-1.67c.19-.15.24-.42.12-.64l-2.02-3.5c-.12-.22-.39-.3-.61-.22l-2.52 1.01c-.52-.4-1.08-.73-1.69-.98l-.38-2.68C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.68c-.61.25-1.17.59-1.69.98L4.96 5.07c-.22-.08-.49 0-.61.22L2.33 8.79c-.12.22-.07.49.12.64l2.14 1.67c-.04.32-.07.65-.07 1s.03.66.07.98l-2.14 1.67c-.19.15-.24.42-.12.64l2.02 3.5c.12.22.39.3.61.22l2.52-1.01c.52.4 1.08.73 1.69.98l.38 2.68c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.68c.61-.25 1.17-.58 1.69-.98l2.52 1.01c.22.08.49 0 .61-.22l2.02-3.5c.12-.22.07-.49-.12-.64l-2.14-1.67z" />
+                </svg>
                 Settings
               </button>
-              <button className="header__user-menu-item" role="menuitem" onClick={() => { navigate('security'); setUserMenuOpen(false); userMenuBtnRef.current?.focus(); }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <button
+                className="header__user-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  navigate('security');
+                  setUserMenuOpen(false);
+                  userMenuBtnRef.current?.focus();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                </svg>
                 Security & Roles
               </button>
               <div className="header__user-menu-divider" />
-              <button className="header__user-menu-item header__user-menu-item--danger" role="menuitem" onClick={() => { setUserMenuOpen(false); logout(); }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+              <button
+                className="header__user-menu-item header__user-menu-item--danger"
+                role="menuitem"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  logout();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
+                </svg>
                 Sign Out
               </button>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 export interface Column<T> {
@@ -8,6 +8,20 @@ export interface Column<T> {
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   render?: (value: unknown, row: T) => React.ReactNode;
+}
+
+/** Opt-in server-side pagination descriptor.  When provided, DataTable skips
+ *  its internal client-side paging and delegates Prev/Next control to the
+ *  caller.  The rows prop must already contain exactly one page of data. */
+export interface ServerPage {
+  /** Zero-based current page index */
+  page: number;
+  pageSize: number;
+  /** When known, used to compute "Page N of M". */
+  totalCount?: number;
+  hasNextPage: boolean;
+  onNextPage: () => void;
+  onPrevPage: () => void;
 }
 
 interface DataTableProps<T extends { [key: string]: unknown }> {
@@ -31,6 +45,11 @@ interface DataTableProps<T extends { [key: string]: unknown }> {
   virtualise?: boolean;
   /** Optional per-row CSS class name. Return an empty string to apply no extra class. */
   rowClassName?: (row: T) => string;
+  /** Optional stable ID used to persist column widths to localStorage. */
+  tableId?: string;
+  /** When provided, DataTable uses server-controlled pagination instead of
+   *  its built-in client-side paging.  rows must be pre-sliced to one page. */
+  serverPagination?: ServerPage;
 }
 
 const PAGE_SIZES = [25, 50, 100];
@@ -52,12 +71,54 @@ export default function DataTable<T extends { [key: string]: unknown }>({
   ariaLabel = 'Data table',
   virtualise = false,
   rowClassName,
+  tableId,
+  serverPagination,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [selectAll, setSelectAll] = useState(false); // "select all records across all pages"
+
+  // G2-14: Column resize state — maps column key to pixel width
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    if (tableId) {
+      try {
+        const stored = localStorage.getItem(`dt-cols-${tableId}`);
+        if (stored) return JSON.parse(stored) as Record<string, number>;
+      } catch {}
+    }
+    return {};
+  });
+
+  // G2-14: Ref tracking the active drag operation
+  const resizing = useRef<{ key: string; startX: number; startW: number } | null>(null);
+
+  // G2-14: Persist colWidths to localStorage when they change
+  useEffect(() => {
+    if (tableId && Object.keys(colWidths).length > 0) {
+      localStorage.setItem(`dt-cols-${tableId}`, JSON.stringify(colWidths));
+    }
+  }, [tableId, colWidths]);
+
+  // G2-14: Global mouse handlers for column drag-resize
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizing.current) return;
+      const delta = e.clientX - resizing.current.startX;
+      const newW = Math.max(60, resizing.current.startW + delta);
+      setColWidths((prev) => ({ ...prev, [resizing.current!.key]: newW }));
+    };
+    const onUp = () => {
+      resizing.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   const sorted = useMemo(() => {
     if (!sortKey) return rows;
@@ -70,7 +131,8 @@ export default function DataTable<T extends { [key: string]: unknown }>({
   }, [rows, sortKey, sortDir]);
 
   const totalPages = Math.ceil(sorted.length / pageSize);
-  const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
+  // When server pagination is active the caller pre-slices the rows; render them all.
+  const paged = serverPagination ? sorted : sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleSort = (key: string) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -284,7 +346,12 @@ export default function DataTable<T extends { [key: string]: unknown }>({
                   scope="col"
                   role="columnheader"
                   className={`dt__th ${col.sortable ? 'dt__th--sortable' : ''}`}
-                  style={{ width: col.width, textAlign: col.align ?? 'left' }}
+                  style={{
+                    width: colWidths[col.key] ?? col.width,
+                    textAlign: col.align ?? 'left',
+                    position: 'relative',
+                    userSelect: 'none',
+                  }}
                   onClick={col.sortable ? () => handleSort(col.key) : undefined}
                   aria-sort={col.sortable ? ariaSort(col.key) : undefined}
                   tabIndex={col.sortable ? 0 : undefined}
@@ -305,6 +372,27 @@ export default function DataTable<T extends { [key: string]: unknown }>({
                       {sortKey === col.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'}
                     </span>
                   )}
+                  {/* G2-14: Drag-to-resize handle */}
+                  <div
+                    className="dt-resize-handle"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      resizing.current = {
+                        key: col.key,
+                        startX: e.clientX,
+                        startW: colWidths[col.key] ?? e.currentTarget.parentElement?.offsetWidth ?? 100,
+                      };
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 4,
+                      cursor: 'col-resize',
+                      background: 'transparent',
+                    }}
+                  />
                 </th>
               ))}
               {actions && (
@@ -454,8 +542,36 @@ export default function DataTable<T extends { [key: string]: unknown }>({
         </table>
       </div>
 
-      {/* Pagination — hidden when virtualise is active; only show when there are filtered results */}
-      {!virtualise && !loading && sorted.length > 0 && (
+      {/* Server-controlled pagination — shown when serverPagination prop is provided */}
+      {serverPagination && !virtualise && (
+        <div className="dt-pagination">
+          <button
+            className="dt-page-btn"
+            disabled={serverPagination.page === 0 || loading}
+            onClick={serverPagination.onPrevPage}
+            aria-label="Previous page"
+          >
+            ← Prev
+          </button>
+          <span style={{ fontSize: 13 }} aria-live="polite">
+            Page {serverPagination.page + 1}
+            {serverPagination.totalCount !== undefined
+              ? ` of ${Math.ceil(serverPagination.totalCount / serverPagination.pageSize)}`
+              : ''}
+          </span>
+          <button
+            className="dt-page-btn"
+            disabled={!serverPagination.hasNextPage || loading}
+            onClick={serverPagination.onNextPage}
+            aria-label="Next page"
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
+      {/* Client-side pagination — hidden when virtualise or serverPagination is active */}
+      {!serverPagination && !virtualise && !loading && sorted.length > 0 && (
         <div className="dt-pagination">
           <div className="dt-pagination__info">
             <span>

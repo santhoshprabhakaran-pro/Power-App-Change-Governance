@@ -38,8 +38,8 @@ type TaskForm = {
 
 const EMPTY_FORM: TaskForm = {
   title: '',
-  type: '100000001',      // ReviewChange default
-  priority: '100000001',  // Medium default
+  type: '100000001', // ReviewChange default
+  priority: '100000001', // Medium default
   dueDate: '',
   relatedChangeId: '',
   assignedTo: '',
@@ -81,9 +81,16 @@ export default function TaskManager() {
           orderBy: ['createdon desc'],
           top: 200,
           select: [
-            'cgmp_taskid', 'cgmp_title', 'cgmp_type', 'cgmp_priority', 'cgmp_duedate',
-            'cgmp_relatedchangeid', 'cgmp_assignedto', 'cgmp_iscompleted',
-            'cgmp_completedat', 'createdon',
+            'cgmp_taskid',
+            'cgmp_title',
+            'cgmp_type',
+            'cgmp_priority',
+            'cgmp_duedate',
+            'cgmp_relatedchangeid',
+            'cgmp_assignedto',
+            'cgmp_iscompleted',
+            'cgmp_completedat',
+            'createdon',
           ] as any,
         }),
         Cgmp_changesService.getAll({
@@ -107,43 +114,50 @@ export default function TaskManager() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   /* ── Derived lookups ── */
   const changeMap = useMemo(() => {
     const m = new Map<string, Cgmp_changes>();
-    changes.forEach(c => m.set(c.cgmp_changeid, c));
+    changes.forEach((c) => m.set(c.cgmp_changeid, c));
     return m;
   }, [changes]);
 
-  const changeOptions = useMemo(() => [
-    { value: '', label: 'None' },
-    ...changes.map(c => ({
-      value: c.cgmp_changeid,
-      label: `${c.cgmp_changenumber} — ${c.cgmp_title ?? ''}`,
-    })),
-  ], [changes]);
+  const changeOptions = useMemo(
+    () => [
+      { value: '', label: 'None' },
+      ...changes.map((c) => ({
+        value: c.cgmp_changeid,
+        label: `${c.cgmp_changenumber} — ${c.cgmp_title ?? ''}`,
+      })),
+    ],
+    [changes]
+  );
 
-  const userOptions = useMemo(() => [
-    { value: '', label: 'Unassigned' },
-    ...users.map(u => ({
-      value: u.cgmp_userprincipalname,
-      label: u.owneridname || u.cgmp_userprincipalname,
-    })),
-  ], [users]);
+  const userOptions = useMemo(
+    () => [
+      { value: '', label: 'Unassigned' },
+      ...users.map((u) => ({
+        value: u.cgmp_userprincipalname,
+        label: u.owneridname || u.cgmp_userprincipalname,
+      })),
+    ],
+    [users]
+  );
 
   /* ── Filtering ── */
   const filtered = useMemo(() => {
     let list = tasks;
-    if (statusFilter === 'open') list = list.filter(t => !t.cgmp_iscompleted);
-    else if (statusFilter === 'resolved') list = list.filter(t => !!t.cgmp_iscompleted);
-    if (priorityFilter) list = list.filter(t => String(t.cgmp_priority as unknown as number) === priorityFilter);
-    if (typeFilter) list = list.filter(t => String(t.cgmp_type as unknown as number) === typeFilter);
+    if (statusFilter === 'open') list = list.filter((t) => !t.cgmp_iscompleted);
+    else if (statusFilter === 'resolved') list = list.filter((t) => !!t.cgmp_iscompleted);
+    if (priorityFilter) list = list.filter((t) => String(t.cgmp_priority as unknown as number) === priorityFilter);
+    if (typeFilter) list = list.filter((t) => String(t.cgmp_type as unknown as number) === typeFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(t =>
-        t.cgmp_title?.toLowerCase().includes(q) ||
-        t.cgmp_assignedto?.toLowerCase().includes(q)
+      list = list.filter(
+        (t) => t.cgmp_title?.toLowerCase().includes(q) || t.cgmp_assignedto?.toLowerCase().includes(q)
       );
     }
     return list;
@@ -152,15 +166,17 @@ export default function TaskManager() {
   const filteredRows = filtered as unknown as AnyRow[];
 
   /* ── Form handlers ── */
-  const setFormField = (k: keyof TaskForm) => (val: string) =>
-    setForm(prev => ({ ...prev, [k]: val }));
+  const setFormField = (k: keyof TaskForm) => (val: string) => setForm((prev) => ({ ...prev, [k]: val }));
 
   const setFormFieldEvent = (k: keyof TaskForm) => (e: { target: { value: string } }) =>
-    setForm(prev => ({ ...prev, [k]: e.target.value }));
+    setForm((prev) => ({ ...prev, [k]: e.target.value }));
 
   /* ── Create task ── */
   const handleCreate = async () => {
-    if (!form.title.trim()) { showToast('error', 'Task name is required'); return; }
+    if (!form.title.trim()) {
+      showToast('error', 'Task name is required');
+      return;
+    }
     setSaving(true);
     try {
       const result = await Cgmp_tasksService.create({
@@ -222,131 +238,138 @@ export default function TaskManager() {
   };
 
   /* ── DataTable column definitions ── */
-  const columns = useMemo((): Column<AnyRow>[] => [
-    {
-      key: 'cgmp_title',
-      label: 'Task Name',
-      sortable: true,
-      render: (_: unknown, row: AnyRow) => {
-        const t = asTask(row);
-        return (
-          <button
-            className="kb-review-title-link"
-            style={{ textAlign: 'left', fontWeight: 500, maxWidth: 260 }}
-            onClick={() => setDetailTask(t)}
-          >
-            {t.cgmp_title || '—'}
-          </button>
-        );
+  const columns = useMemo(
+    (): Column<AnyRow>[] => [
+      {
+        key: 'cgmp_title',
+        label: 'Task Name',
+        sortable: true,
+        render: (_: unknown, row: AnyRow) => {
+          const t = asTask(row);
+          return (
+            <button
+              className="kb-review-title-link"
+              style={{ textAlign: 'left', fontWeight: 500, maxWidth: 260 }}
+              onClick={() => setDetailTask(t)}
+            >
+              {t.cgmp_title || '—'}
+            </button>
+          );
+        },
       },
-    },
-    {
-      key: 'cgmp_type',
-      label: 'Type',
-      sortable: true,
-      width: 170,
-      render: (_: unknown, row: AnyRow) => {
-        const code = asTask(row).cgmp_type as unknown as number;
-        return <span style={{ fontSize: 12 }}>{TASK_TYPE_LABEL_MAP[code] ?? '—'}</span>;
+      {
+        key: 'cgmp_type',
+        label: 'Type',
+        sortable: true,
+        width: 170,
+        render: (_: unknown, row: AnyRow) => {
+          const code = asTask(row).cgmp_type as unknown as number;
+          return <span style={{ fontSize: 12 }}>{TASK_TYPE_LABEL_MAP[code] ?? '—'}</span>;
+        },
       },
-    },
-    {
-      key: 'cgmp_priority',
-      label: 'Priority',
-      sortable: true,
-      width: 95,
-      render: (_: unknown, row: AnyRow) => {
-        const code = asTask(row).cgmp_priority as unknown as number;
-        return (
-          <span className={`badge badge--status ${PRIORITY_BADGE[code] ?? ''}`}>
-            {PRIORITY_LABEL_MAP[code] ?? '—'}
-          </span>
-        );
+      {
+        key: 'cgmp_priority',
+        label: 'Priority',
+        sortable: true,
+        width: 95,
+        render: (_: unknown, row: AnyRow) => {
+          const code = asTask(row).cgmp_priority as unknown as number;
+          return (
+            <span className={`badge badge--status ${PRIORITY_BADGE[code] ?? ''}`}>
+              {PRIORITY_LABEL_MAP[code] ?? '—'}
+            </span>
+          );
+        },
       },
-    },
-    {
-      key: 'cgmp_duedate',
-      label: 'Due Date',
-      sortable: true,
-      width: 110,
-      render: (_: unknown, row: AnyRow) => (
-        <span style={{ fontSize: 12 }}>{fmtDate(asTask(row).cgmp_duedate)}</span>
-      ),
-    },
-    {
-      key: 'cgmp_relatedchangeid',
-      label: 'Linked Change',
-      width: 130,
-      render: (_: unknown, row: AnyRow) => {
-        const t = asTask(row);
-        if (!t.cgmp_relatedchangeid) return <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>;
-        const c = changeMap.get(t.cgmp_relatedchangeid);
-        return <span style={{ fontSize: 12 }}>{c ? c.cgmp_changenumber : t.cgmp_relatedchangeid}</span>;
+      {
+        key: 'cgmp_duedate',
+        label: 'Due Date',
+        sortable: true,
+        width: 110,
+        render: (_: unknown, row: AnyRow) => <span style={{ fontSize: 12 }}>{fmtDate(asTask(row).cgmp_duedate)}</span>,
       },
-    },
-    {
-      key: 'cgmp_assignedto',
-      label: 'Assigned To',
-      sortable: true,
-      width: 150,
-      render: (_: unknown, row: AnyRow) => {
-        const val = asTask(row).cgmp_assignedto;
-        return val
-          ? <span style={{ fontSize: 12 }}>{val}</span>
-          : <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Unassigned</span>;
+      {
+        key: 'cgmp_relatedchangeid',
+        label: 'Linked Change',
+        width: 130,
+        render: (_: unknown, row: AnyRow) => {
+          const t = asTask(row);
+          if (!t.cgmp_relatedchangeid) return <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>;
+          const c = changeMap.get(t.cgmp_relatedchangeid);
+          return <span style={{ fontSize: 12 }}>{c ? c.cgmp_changenumber : t.cgmp_relatedchangeid}</span>;
+        },
       },
-    },
-    {
-      key: 'cgmp_iscompleted',
-      label: 'Status',
-      sortable: true,
-      width: 90,
-      render: (_: unknown, row: AnyRow) => {
-        const done = asTask(row).cgmp_iscompleted;
-        return done
-          ? <span className="badge badge--status status-completed">Resolved</span>
-          : <span className="badge badge--status status-inprogress">Open</span>;
+      {
+        key: 'cgmp_assignedto',
+        label: 'Assigned To',
+        sortable: true,
+        width: 150,
+        render: (_: unknown, row: AnyRow) => {
+          const val = asTask(row).cgmp_assignedto;
+          return val ? (
+            <span style={{ fontSize: 12 }}>{val}</span>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Unassigned</span>
+          );
+        },
       },
-    },
-  ], [changeMap]);
+      {
+        key: 'cgmp_iscompleted',
+        label: 'Status',
+        sortable: true,
+        width: 90,
+        render: (_: unknown, row: AnyRow) => {
+          const done = asTask(row).cgmp_iscompleted;
+          return done ? (
+            <span className="badge badge--status status-completed">Resolved</span>
+          ) : (
+            <span className="badge badge--status status-inprogress">Open</span>
+          );
+        },
+      },
+    ],
+    [changeMap]
+  );
 
   /* ── Row actions ── */
-  const actions = useCallback((row: AnyRow) => {
-    const t = asTask(row);
-    return (
-      <div className="row-actions">
-        {!t.cgmp_iscompleted && (
-          <button
-            className="row-action-btn"
-            title="Mark Resolved"
-            onClick={() => setResolveTarget(t)}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-            </svg>
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            className="row-action-btn row-action-btn--danger"
-            title="Delete task"
-            onClick={() => setDeleteTarget(t)}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-            </svg>
-          </button>
-        )}
-      </div>
-    );
-  }, [isAdmin]);
+  const actions = useCallback(
+    (row: AnyRow) => {
+      const t = asTask(row);
+      return (
+        <div className="row-actions">
+          {!t.cgmp_iscompleted && (
+            <button className="row-action-btn" title="Mark Resolved" onClick={() => setResolveTarget(t)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              className="row-action-btn row-action-btn--danger"
+              title="Delete task"
+              onClick={() => setDeleteTarget(t)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    },
+    [isAdmin]
+  );
 
   /* ── Footers ── */
   const createFooter = (
     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', width: '100%' }}>
       <button
         className="btn btn--outline"
-        onClick={() => { setCreateOpen(false); setForm(EMPTY_FORM); }}
+        onClick={() => {
+          setCreateOpen(false);
+          setForm(EMPTY_FORM);
+        }}
         disabled={saving}
       >
         Cancel
@@ -358,9 +381,7 @@ export default function TaskManager() {
   );
 
   /* ── Detail panel linked change ── */
-  const detailChange = detailTask?.cgmp_relatedchangeid
-    ? changeMap.get(detailTask.cgmp_relatedchangeid)
-    : undefined;
+  const detailChange = detailTask?.cgmp_relatedchangeid ? changeMap.get(detailTask.cgmp_relatedchangeid) : undefined;
 
   return (
     <div className="module-workspace">
@@ -370,7 +391,9 @@ export default function TaskManager() {
           <h1 className="module-title">Task Manager</h1>
           <p className="module-subtitle">Track and manage action items across all changes</p>
         </div>
-        <button className="btn btn--primary btn--sm" onClick={() => setCreateOpen(true)}>+ New Task</button>
+        <button className="btn btn--primary btn--sm" onClick={() => setCreateOpen(true)}>
+          + New Task
+        </button>
       </div>
 
       {/* Filter bar */}
@@ -379,12 +402,12 @@ export default function TaskManager() {
           className="filter-bar__search"
           placeholder="Search tasks…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="filter-bar__select"
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as 'all' | 'open' | 'resolved')}
+          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'open' | 'resolved')}
         >
           <option value="all">All Statuses</option>
           <option value="open">Open</option>
@@ -393,20 +416,26 @@ export default function TaskManager() {
         <select
           className="filter-bar__select"
           value={priorityFilter}
-          onChange={e => setPriorityFilter(e.target.value)}
+          onChange={(e) => setPriorityFilter(e.target.value)}
         >
           <option value="">All Priorities</option>
-          {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {PRIORITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </select>
-        <select
-          className="filter-bar__select"
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-        >
+        <select className="filter-bar__select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           <option value="">All Types</option>
-          {TASK_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {TASK_TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </select>
-        <span className="filter-bar__count">{filtered.length} task{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="filter-bar__count">
+          {filtered.length} task{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Data table */}
@@ -425,19 +454,25 @@ export default function TaskManager() {
       {/* ── Create task panel ── */}
       <SlidePanel
         open={createOpen}
-        onClose={() => { setCreateOpen(false); setForm(EMPTY_FORM); }}
+        onClose={() => {
+          setCreateOpen(false);
+          setForm(EMPTY_FORM);
+        }}
         title="New Task"
         width={520}
         footer={createFooter}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
           <div className="ff-group">
-            <label className="ff-label">Task Name <span className="ff-required">*</span></label>
+            <label className="ff-label">
+              Task Name <span className="ff-required">*</span>
+            </label>
             <input
               className="ff-input"
               value={form.title}
               onChange={setFormFieldEvent('title')}
               placeholder="Enter task name"
+              maxLength={200}
               autoFocus
             />
           </div>
@@ -446,16 +481,20 @@ export default function TaskManager() {
             <div className="ff-group">
               <label className="ff-label">Type</label>
               <select className="ff-input ff-select" value={form.type} onChange={setFormFieldEvent('type')}>
-                {TASK_TYPE_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                {TASK_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="ff-group">
               <label className="ff-label">Priority</label>
               <select className="ff-input ff-select" value={form.priority} onChange={setFormFieldEvent('priority')}>
-                {PRIORITY_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                {PRIORITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -498,11 +537,7 @@ export default function TaskManager() {
         open={!!detailTask}
         onClose={() => setDetailTask(null)}
         title={detailTask?.cgmp_title ?? 'Task Details'}
-        subtitle={
-          detailTask
-            ? TASK_TYPE_LABEL_MAP[detailTask.cgmp_type as unknown as number] ?? ''
-            : ''
-        }
+        subtitle={detailTask ? (TASK_TYPE_LABEL_MAP[detailTask.cgmp_type as unknown as number] ?? '') : ''}
         width={480}
       >
         {detailTask && (
@@ -510,50 +545,124 @@ export default function TaskManager() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {/* Status */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Status</div>
-                {detailTask.cgmp_iscompleted
-                  ? <span className="badge badge--status status-completed">Resolved</span>
-                  : <span className="badge badge--status status-inprogress">Open</span>}
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}
+                >
+                  Status
+                </div>
+                {detailTask.cgmp_iscompleted ? (
+                  <span className="badge badge--status status-completed">Resolved</span>
+                ) : (
+                  <span className="badge badge--status status-inprogress">Open</span>
+                )}
               </div>
 
               {/* Priority */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Priority</div>
-                <span className={`badge badge--status ${PRIORITY_BADGE[detailTask.cgmp_priority as unknown as number] ?? ''}`}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}
+                >
+                  Priority
+                </div>
+                <span
+                  className={`badge badge--status ${PRIORITY_BADGE[detailTask.cgmp_priority as unknown as number] ?? ''}`}
+                >
                   {PRIORITY_LABEL_MAP[detailTask.cgmp_priority as unknown as number] ?? '—'}
                 </span>
               </div>
 
               {/* Due Date */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Due Date</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}
+                >
+                  Due Date
+                </div>
                 <div style={{ fontSize: 13 }}>{fmtDate(detailTask.cgmp_duedate)}</div>
               </div>
 
               {/* Assigned To */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Assigned To</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}
+                >
+                  Assigned To
+                </div>
                 <div style={{ fontSize: 13 }}>{detailTask.cgmp_assignedto || '—'}</div>
               </div>
 
               {/* Linked Change */}
               {detailChange && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Linked Change</div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-tertiary)',
+                      textTransform: 'uppercase',
+                      marginBottom: 4,
+                    }}
+                  >
+                    Linked Change
+                  </div>
                   <div style={{ fontSize: 13 }}>{detailChange.cgmp_changenumber}</div>
                 </div>
               )}
 
               {/* Created On */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Created On</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}
+                >
+                  Created On
+                </div>
                 <div style={{ fontSize: 13 }}>{fmtDateTime(detailTask.createdon)}</div>
               </div>
 
               {/* Resolved On */}
               {detailTask.cgmp_iscompleted && detailTask.cgmp_completedat && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>Resolved On</div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-tertiary)',
+                      textTransform: 'uppercase',
+                      marginBottom: 4,
+                    }}
+                  >
+                    Resolved On
+                  </div>
                   <div style={{ fontSize: 13 }}>{fmtDateTime(detailTask.cgmp_completedat)}</div>
                 </div>
               )}
@@ -564,7 +673,10 @@ export default function TaskManager() {
               <div style={{ paddingTop: 4 }}>
                 <button
                   className="btn btn--primary btn--sm"
-                  onClick={() => { setResolveTarget(detailTask); setDetailTask(null); }}
+                  onClick={() => {
+                    setResolveTarget(detailTask);
+                    setDetailTask(null);
+                  }}
                 >
                   Mark Resolved
                 </button>

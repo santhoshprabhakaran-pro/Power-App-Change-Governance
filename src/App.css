@@ -623,6 +623,9 @@ textarea:disabled {
 .dt-page-btn:hover:not(:disabled) { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 .dt-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* G2-14: Column resize handle */
+.dt-resize-handle:hover { background: var(--primary) !important; }
+
 .dt-select-banner {
   display: flex;
   align-items: center;
@@ -1724,6 +1727,25 @@ details[open] .giicc-all-summary::before { transform: rotate(90deg); }
 .search-result-item__number {
   font-size: 11px; color: var(--text-tertiary); white-space: nowrap;
 }
+
+/* ── Grouped search / command palette items ── */
+.cmd-palette__section-header {
+  padding: 6px 12px 4px; font-size: 10px; font-weight: 700;
+  color: var(--text-tertiary); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.cmd-palette__item {
+  display: flex; align-items: center; width: 100%; padding: 10px 14px;
+  background: transparent; border: none; text-align: left; cursor: pointer;
+  border-bottom: 1px solid var(--border-light); color: var(--text-primary);
+  font-size: 13px; font-family: inherit; transition: background 0.1s;
+}
+.cmd-palette__item:hover { background: var(--surface-alt); }
+.cmd-palette__item--focused {
+  background: var(--primary-faint);
+  outline: 2px solid var(--primary, #0d6efd);
+  outline-offset: -2px;
+}
+.cmd-palette__sublabel { font-size: 11px; color: var(--text-tertiary); }
 
 /* ── Header: User dropdown ── */
 .header__user-wrap { position: relative; }
@@ -3611,6 +3633,8 @@ textarea:focus-visible,
   .report-kpis,
   .report-chart-card,
   .report-section { page-break-inside: avoid; break-inside: avoid; }
+  .gantt-row,
+  .gantt-bar { page-break-inside: avoid; break-inside: avoid; }
 
   /* Remove shadows and borders for print */
   .card,
@@ -3622,3 +3646,16 @@ textarea:focus-visible,
   }
 }
 
+/* ── Gantt / Timeline View ──────────────────────── */
+.gantt-row { display: flex; align-items: center; border-bottom: 1px solid var(--border); min-height: 40px; }
+.gantt-label { width: 140px; flex-shrink: 0; font-size: 12px; font-weight: 600; padding: 4px 8px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-track { flex: 1; position: relative; background: var(--surface-alt); min-height: 32px; }
+.gantt-header { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 4px; }
+.gantt-header-label { width: 140px; flex-shrink: 0; }
+.gantt-header-dates { flex: 1; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+.gantt-bar { color: #fff; user-select: none; box-sizing: border-box; }
+.gantt-bar.risk-low { background: var(--success); }
+.gantt-bar.risk-medium { background: #D08700; }
+.gantt-bar.risk-high { background: var(--danger); }
+.gantt-bar.risk-critical { background: #750B1C; }
+.gantt-bar:hover { filter: brightness(1.1); }

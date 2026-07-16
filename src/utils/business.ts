@@ -1,5 +1,6 @@
 /** Pure business-logic utilities — no React dependencies */
 
+import { addDays, differenceInMilliseconds, parseISO } from 'date-fns';
 import { STATUS } from './roles';
 import type { Cgmp_changes } from '../generated/models/Cgmp_changesModel';
 
@@ -8,15 +9,11 @@ import type { Cgmp_changes } from '../generated/models/Cgmp_changesModel';
    IT Ops freeze: startTime − 2 days  (IT Ops should lock by this)  */
 
 export function ismFreezeDate(startTime: string): Date {
-  const d = new Date(startTime);
-  d.setDate(d.getDate() - 3);
-  return d;
+  return addDays(parseISO(startTime), -3);
 }
 
 export function itopsFreezeDate(startTime: string): Date {
-  const d = new Date(startTime);
-  d.setDate(d.getDate() - 2);
-  return d;
+  return addDays(parseISO(startTime), -2);
 }
 
 export function isIsmFrozen(startTime: string | undefined): boolean {
@@ -24,12 +21,12 @@ export function isIsmFrozen(startTime: string | undefined): boolean {
 }
 
 export function daysUntilIsmFreeze(startTime: string): number {
-  return Math.ceil((ismFreezeDate(startTime).getTime() - Date.now()) / 86400000);
+  return Math.ceil(differenceInMilliseconds(ismFreezeDate(startTime), new Date()) / 86400000);
 }
 
 /** Count changes with a given status code */
 export function countStatus(arr: Cgmp_changes[], code: number): number {
-  return arr.filter(c => (c.cgmp_status as unknown as number) === code).length;
+  return arr.filter((c) => (c.cgmp_status as unknown as number) === code).length;
 }
 
 /** Compute SLA compliance percentage (completed / (completed + failed)) */
@@ -55,7 +52,10 @@ const VERSION_HISTORY_TRIM_TO = 450;
 /** Append an entry to a JSON version-history string, capping at 500 entries. */
 export function appendHistory(existing: string | undefined, entry: unknown): string {
   let hist: unknown[] = [];
-  try { const p = JSON.parse(existing ?? '[]'); if (Array.isArray(p)) hist = p; } catch {}
+  try {
+    const p = JSON.parse(existing ?? '[]');
+    if (Array.isArray(p)) hist = p;
+  } catch {}
   if (hist.length >= VERSION_HISTORY_CAP) {
     if (import.meta.env.DEV) {
       console.warn(`[CGMP] Version history cap reached (${VERSION_HISTORY_CAP}) — oldest entries will be trimmed`);
@@ -79,15 +79,14 @@ export function getSlaBreach(
   thresholdMinutes: number
 ): boolean {
   if (!startTime || !endTime) return false;
-  const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+  const durationMs = differenceInMilliseconds(parseISO(endTime), parseISO(startTime));
   return durationMs / 60000 > thresholdMinutes;
 }
 
 /** Human-readable "due in X" or "Overdue" string */
 export function formatDueDelta(dateStr: string | undefined): string {
   if (!dateStr) return '';
-  const target = new Date(dateStr).getTime();
-  const diff = target - Date.now();
+  const diff = differenceInMilliseconds(parseISO(dateStr), new Date());
   if (diff <= 0) return 'Overdue';
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);

@@ -10,7 +10,11 @@ import { escapeODataString } from '../utils/odata';
 
 /* ── Toast ── */
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
-export interface ToastItem { id: string; type: ToastType; message: string; }
+export interface ToastItem {
+  id: string;
+  type: ToastType;
+  message: string;
+}
 
 /* ── App Context Shape ── */
 interface AppContextValue {
@@ -45,13 +49,32 @@ const THEME_KEY = 'cgmp-theme';
 
 /* ── Hash-based routing ── */
 const KNOWN_PAGES = new Set([
-  'dashboard', 'pmo', 'itops', 'ism', 'giicc',
-  'project', 'attachment', 'knowledge',
-  'reports', 'powerbi', 'heatmap', 'leaderboard',
-  'audit', 'archive', 'notification-center',
-  'settings', 'security', 'notif-prefs', 'notification-rules',
-  'change-templates', 'blackout-calendar', 'admin-dashboard',
-  'tasks', 'scheduling', 'capacity-planning',
+  'dashboard',
+  'pmo',
+  'itops',
+  'ism',
+  'giicc',
+  'project',
+  'attachment',
+  'knowledge',
+  'reports',
+  'powerbi',
+  'heatmap',
+  'leaderboard',
+  'audit',
+  'archive',
+  'notification-center',
+  'settings',
+  'security',
+  'notif-prefs',
+  'notification-rules',
+  'change-templates',
+  'blackout-calendar',
+  'admin-dashboard',
+  'tasks',
+  'scheduling',
+  'capacity-planning',
+  'gantt',
 ]);
 
 function pageFromHash(): string {
@@ -64,7 +87,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sdkUser, setSdkUser] = useState<IContext['user'] | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
+    try {
+      return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
   });
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
@@ -76,7 +103,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const currentUserNameRef = useRef<string>('Unknown User');
 
   /* Clear all pending toast timers on unmount */
-  useEffect(() => () => { toastTimers.current.forEach(t => clearTimeout(t)); }, []);
+  useEffect(
+    () => () => {
+      toastTimers.current.forEach((t) => clearTimeout(t));
+    },
+    []
+  );
 
   /* Sync hash → state when the user navigates with Back/Forward */
   useEffect(() => {
@@ -111,7 +143,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     syncTeamsTheme();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   /* Load Power Apps context for real user identity, then load profile */
@@ -155,11 +189,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     loadUser();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(t => {
+    setTheme((t) => {
       const next = t === 'light' ? 'dark' : 'light';
       localStorage.setItem(THEME_KEY, next);
       return next;
@@ -167,13 +203,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /* Keep currentUserNameRef in sync for use in beforeunload */
-  const currentUserName = useMemo(() =>
-    sdkUser?.fullName ??
-    userProfile?.owneridname ??
-    sdkUser?.userPrincipalName?.split('@')[0] ??
-    'Unknown User'
-  , [sdkUser, userProfile]);
-  useEffect(() => { currentUserNameRef.current = currentUserName; }, [currentUserName]);
+  const currentUserName = useMemo(
+    () => sdkUser?.fullName ?? userProfile?.owneridname ?? sdkUser?.userPrincipalName?.split('@')[0] ?? 'Unknown User',
+    [sdkUser, userProfile]
+  );
+  useEffect(() => {
+    currentUserNameRef.current = currentUserName;
+  }, [currentUserName]);
 
   /* Best-effort logout audit on page unload.
    *
@@ -194,14 +230,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Synchronous localStorage cleanup is safe inside beforeunload.
       // Item 20 — purge all app-owned keys on page close, matching the same
       // key prefixes cleared by logout() to avoid stale data on next login.
-      const unloadKeysToRemove = Object.keys(localStorage).filter(k =>
-        k.startsWith('cgmp-') ||
-        k.startsWith('pmo-changelist-') ||
-        k.startsWith('cgmp-fb-') ||
-        k.startsWith('cgmp-draft-') ||
-        k === 'rp-collapsed'
+      const unloadKeysToRemove = Object.keys(localStorage).filter(
+        (k) =>
+          k.startsWith('cgmp-') ||
+          k.startsWith('pmo-changelist-') ||
+          k.startsWith('cgmp-fb-') ||
+          k.startsWith('cgmp-draft-') ||
+          k === 'rp-collapsed'
       );
-      unloadKeysToRemove.forEach(k => localStorage.removeItem(k));
+      unloadKeysToRemove.forEach((k) => localStorage.removeItem(k));
       const orgUrl = (import.meta.env.VITE_ORG_URL as string | undefined) ?? '';
       if (!orgUrl) {
         // VITE_ORG_URL not configured — skip audit log rather than fire an
@@ -218,10 +255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         cgmp_useremail: upn,
         cgmp_ipaddress: getBrowserInfo(),
       });
-      navigator.sendBeacon(
-        `${orgUrl}/api/data/v9.2/cgmp_auditlogs`,
-        new Blob([payload], { type: 'application/json' }),
-      );
+      navigator.sendBeacon(`${orgUrl}/api/data/v9.2/cgmp_auditlogs`, new Blob([payload], { type: 'application/json' }));
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
@@ -235,18 +269,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const upn = upnRef.current; // capture at effect start — safe, UPN does not change mid-session
     const doRefresh = async () => {
       try {
-        const r = await Cgmp_userprofilesService.getAll({ filter: `cgmp_userprincipalname eq '${escapeODataString(upn)}'`, top: 1 });
+        const r = await Cgmp_userprofilesService.getAll({
+          filter: `cgmp_userprincipalname eq '${escapeODataString(upn)}'`,
+          top: 1,
+        });
         const profiles = r.data ?? [];
         if (profiles.length > 0) setUserProfile(profiles[0]);
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     };
     let intervalId = setInterval(doRefresh, PROFILE_REFRESH_INTERVAL_MS);
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') clearInterval(intervalId);
-      else { doRefresh(); intervalId = setInterval(doRefresh, PROFILE_REFRESH_INTERVAL_MS); }
+      else {
+        doRefresh();
+        intervalId = setInterval(doRefresh, PROFILE_REFRESH_INTERVAL_MS);
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
-    return () => { clearInterval(intervalId); document.removeEventListener('visibilitychange', onVisibility); };
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [userLoading]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -255,9 +300,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (last && last.type === type && last.message === message && now - last.time < 2000) return;
     lastToastRef.current = { type, message, time: now };
     const id = String(++toastId.current);
-    setToasts(prev => [...prev, { id, type, message }]);
+    setToasts((prev) => [...prev, { id, type, message }]);
     const timer = setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      setToasts((prev) => prev.filter((t) => t.id !== id));
       toastTimers.current.delete(id);
     }, 4000);
     toastTimers.current.set(id, timer);
@@ -265,8 +310,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const dismissToast = useCallback((id: string) => {
     const timer = toastTimers.current.get(id);
-    if (timer) { clearTimeout(timer); toastTimers.current.delete(id); }
-    setToasts(prev => prev.filter(t => t.id !== id));
+    if (timer) {
+      clearTimeout(timer);
+      toastTimers.current.delete(id);
+    }
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const openNotificationPanel = useCallback(() => setNotificationPanelOpen(true), []);
@@ -275,15 +323,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Clear app storage — Item 20: explicit key prefixes so only known
     // app-owned entries are removed and nothing else is accidentally wiped.
     try {
-      const keysToRemove = Object.keys(localStorage).filter(k =>
-        k.startsWith('cgmp-') ||
-        k.startsWith('pmo-changelist-') ||
-        k.startsWith('cgmp-fb-') ||
-        k.startsWith('cgmp-draft-') ||
-        k === 'rp-collapsed'
+      const keysToRemove = Object.keys(localStorage).filter(
+        (k) =>
+          k.startsWith('cgmp-') ||
+          k.startsWith('pmo-changelist-') ||
+          k.startsWith('cgmp-fb-') ||
+          k.startsWith('cgmp-draft-') ||
+          k === 'rp-collapsed'
       );
-      keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch { /* ignore */ }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
 
     // Redirect to AAD logout
     const tenantId = import.meta.env.VITE_TENANT_ID ?? '';
@@ -316,9 +367,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const currentUserUpn = useMemo(() =>
-    userProfile?.cgmp_userprincipalname ?? sdkUser?.userPrincipalName ?? ''
-  , [userProfile, sdkUser]);
+  const currentUserUpn = useMemo(
+    () => userProfile?.cgmp_userprincipalname ?? sdkUser?.userPrincipalName ?? '',
+    [userProfile, sdkUser]
+  );
 
   // Use Number() cast to safely handle option sets returned as strings by OData
   const roleCode = useMemo(() => Number(userProfile?.cgmp_role ?? -1), [userProfile]);
@@ -330,31 +382,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const isObserver = useMemo(() => roleCode === EXTENDED_ROLES.Observer, [roleCode]);
   const assignedLocations = useMemo(() => {
     const locs = userProfile?.cgmp_assignedlocations ?? '';
-    return locs ? locs.split(';').map(l => l.trim()).filter(Boolean) : [];
+    return locs
+      ? locs
+          .split(';')
+          .map((l) => l.trim())
+          .filter(Boolean)
+      : [];
   }, [userProfile]);
   const canEdit = useMemo(() => roleCode !== EXTENDED_ROLES.Observer, [roleCode]);
 
-  const contextValue = useMemo(() => ({
-    userProfile, userLoading, currentUserName, currentUserUpn,
-    isAdmin, isPMO, isITOps, isISM, isGIICC, isObserver, assignedLocations, canEdit,
-    theme, toggleTheme,
-    toasts, showToast, dismissToast,
-    notificationPanelOpen, openNotificationPanel, closeNotificationPanel,
-    activePage, navigate, setNavigationGuard, logout,
-  }), [
-    userProfile, userLoading, currentUserName, currentUserUpn,
-    isAdmin, isPMO, isITOps, isISM, isGIICC, isObserver, assignedLocations, canEdit,
-    theme, toggleTheme,
-    toasts, showToast, dismissToast,
-    notificationPanelOpen, openNotificationPanel, closeNotificationPanel,
-    activePage, navigate, setNavigationGuard, logout,
-  ]);
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      userProfile,
+      userLoading,
+      currentUserName,
+      currentUserUpn,
+      isAdmin,
+      isPMO,
+      isITOps,
+      isISM,
+      isGIICC,
+      isObserver,
+      assignedLocations,
+      canEdit,
+      theme,
+      toggleTheme,
+      toasts,
+      showToast,
+      dismissToast,
+      notificationPanelOpen,
+      openNotificationPanel,
+      closeNotificationPanel,
+      activePage,
+      navigate,
+      setNavigationGuard,
+      logout,
+    }),
+    [
+      userProfile,
+      userLoading,
+      currentUserName,
+      currentUserUpn,
+      isAdmin,
+      isPMO,
+      isITOps,
+      isISM,
+      isGIICC,
+      isObserver,
+      assignedLocations,
+      canEdit,
+      theme,
+      toggleTheme,
+      toasts,
+      showToast,
+      dismissToast,
+      notificationPanelOpen,
+      openNotificationPanel,
+      closeNotificationPanel,
+      activePage,
+      navigate,
+      setNavigationGuard,
+      logout,
+    ]
   );
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
 
 export function useApp(): AppContextValue {

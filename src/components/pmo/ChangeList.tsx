@@ -369,23 +369,32 @@ export default function ChangeList({
           label: 'Change #',
           width: 130,
           sortable: true,
-          render: (_: unknown, row: AnyRow) => (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span className="change-number">{asRow(row).cgmp_changenumber}</span>
-              <button
-                className="btn-icon"
-                title={`Copy ${asRow(row).cgmp_changenumber} to clipboard`}
-                aria-label={`Copy change number ${asRow(row).cgmp_changenumber}`}
-                style={{ padding: '2px 4px', fontSize: 11, opacity: 0.6 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(asRow(row).cgmp_changenumber ?? '').catch(() => {});
-                }}
-              >
-                📋
-              </button>
-            </span>
-          ),
+          render: (_: unknown, row: AnyRow) => {
+            const change = asRow(row);
+            const childCount = changes.filter((c) => (c as any).cgmp_parentchangeid === change.cgmp_changeid).length;
+            return (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span className="change-number">{change.cgmp_changenumber}</span>
+                <button
+                  className="btn-icon"
+                  title={`Copy ${change.cgmp_changenumber} to clipboard`}
+                  aria-label={`Copy change number ${change.cgmp_changenumber}`}
+                  style={{ padding: '2px 4px', fontSize: 11, opacity: 0.6 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(change.cgmp_changenumber ?? '').catch(() => {});
+                  }}
+                >
+                  📋
+                </button>
+                {childCount > 0 && (
+                  <span className="badge badge--info badge--small" style={{ marginLeft: 4 }}>
+                    {childCount} children
+                  </span>
+                )}
+              </span>
+            );
+          },
         },
         {
           key: 'cgmp_title',
@@ -511,7 +520,7 @@ export default function ChangeList({
           },
         },
       ].filter((col) => !hiddenCols.has(col.key)),
-    [hiddenCols, showToast]
+    [hiddenCols, showToast, changes]
   );
 
   const actions = useCallback(

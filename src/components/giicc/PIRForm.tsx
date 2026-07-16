@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { SlidePanel } from '../ui/Modal';
 import { getBrowserInfo } from '../../utils/format';
+import { trackAppEvent } from '../../utils/appInsights';
 import { useApp } from '../../context/AppContext';
 import { Cgmp_bridgesService, Cgmp_auditlogsService, Cgmp_changesService } from '../../generated';
 import type { Cgmp_bridges } from '../../generated/models/Cgmp_bridgesModel';
@@ -69,10 +70,14 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
         Cgmp_changesService.update(changeId, { cgmp_pirstatus: asPirStatus(100000001) }).catch(() => {});
       }
       showToast('success', 'PIR saved');
+      // G2-8: track PIR submission
+      trackAppEvent('pir.submitted', { changeId: changeId ?? bridge.cgmp_bridgeid });
       onUpdated();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to save PIR');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleClose = async (outcome: 'completed' | 'failed') => {
@@ -112,13 +117,17 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
         cgmp_ipaddress: getBrowserInfo(),
         cgmp_previousvalues: JSON.stringify({ status: bridgeStatusLabel(bridge.cgmp_status as unknown as number) }),
         cgmp_newvalues: JSON.stringify({ status: outcome, downtimeMinutes }),
-      } as unknown as Omit<Cgmp_auditlogsBase, 'cgmp_auditlogid'>).catch(err => { if (import.meta.env.DEV) console.error('Audit log failed:', err); });
+      } as unknown as Omit<Cgmp_auditlogsBase, 'cgmp_auditlogid'>).catch((err) => {
+        if (import.meta.env.DEV) console.error('Audit log failed:', err);
+      });
       showToast(outcome === 'completed' ? 'success' : 'error', `Bridge ${outcome}`);
       onUpdated();
       onClose();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to close bridge');
-    } finally { setClosing(null); }
+    } finally {
+      setClosing(null);
+    }
   };
 
   const bridgeStatus = bridge ? (bridge.cgmp_status as unknown as number) : -1;
@@ -127,11 +136,16 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
 
   const handleCancelBridge = async () => {
     if (!bridge) return;
-    if (!cancelReason.trim()) { showToast('error', 'Cancellation reason is required.'); return; }
+    if (!cancelReason.trim()) {
+      showToast('error', 'Cancellation reason is required.');
+      return;
+    }
     setCancelling(true);
     try {
       const existing = bridge.cgmp_pirnotes ?? '';
-      const cancelNote = existing ? `[CANCELLED: ${cancelReason.trim()}]\n${existing}` : `Cancelled: ${cancelReason.trim()}`;
+      const cancelNote = existing
+        ? `[CANCELLED: ${cancelReason.trim()}]\n${existing}`
+        : `Cancelled: ${cancelReason.trim()}`;
       const r = await Cgmp_bridgesService.update(bridge.cgmp_bridgeid, {
         cgmp_status: BRIDGE_STATUS.Cancelled as unknown as Cgmp_bridgescgmp_status,
         cgmp_rollbackreason: cancelReason.trim(),
@@ -143,7 +157,11 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
       onClose();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to cancel bridge');
-    } finally { setCancelling(false); setShowCancelInput(false); setCancelReason(''); }
+    } finally {
+      setCancelling(false);
+      setShowCancelInput(false);
+      setCancelReason('');
+    }
   };
 
   const footer = (
@@ -158,18 +176,32 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
                   style={{ fontSize: 12, padding: '4px 8px', minWidth: 200 }}
                   placeholder="Cancellation reason (required)"
                   value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
+                  onChange={(e) => setCancelReason(e.target.value)}
                   autoFocus
                 />
-                <button className="btn btn--xs btn--danger" onClick={handleCancelBridge} disabled={cancelling || !cancelReason.trim()}>
+                <button
+                  className="btn btn--xs btn--danger"
+                  onClick={handleCancelBridge}
+                  disabled={cancelling || !cancelReason.trim()}
+                >
                   {cancelling ? 'Cancelling…' : 'Confirm Cancel'}
                 </button>
-                <button className="btn btn--xs btn--outline" onClick={() => { setShowCancelInput(false); setCancelReason(''); }}>
+                <button
+                  className="btn btn--xs btn--outline"
+                  onClick={() => {
+                    setShowCancelInput(false);
+                    setCancelReason('');
+                  }}
+                >
                   Back
                 </button>
               </div>
             ) : (
-              <button className="btn btn--outline" onClick={() => setShowCancelInput(true)} disabled={cancelling || saving}>
+              <button
+                className="btn btn--outline"
+                onClick={() => setShowCancelInput(true)}
+                disabled={cancelling || saving}
+              >
                 Cancel Bridge
               </button>
             )}
@@ -187,7 +219,9 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
         )}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn btn--outline" onClick={onClose} disabled={saving || !!closing || cancelling}>Cancel</button>
+        <button className="btn btn--outline" onClick={onClose} disabled={saving || !!closing || cancelling}>
+          Cancel
+        </button>
         <button
           className="btn btn--primary"
           onClick={handleSave}
@@ -203,17 +237,30 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
   if (!bridge) return null;
 
   return (
-    <SlidePanel open={open} onClose={onClose} title="PIR & Closure" subtitle={bridge.cgmp_title} width={560} footer={footer}>
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      title="PIR & Closure"
+      subtitle={bridge.cgmp_title}
+      width={560}
+      footer={footer}
+    >
       <div className="pir-panel">
         {/* PIR tabs */}
         <div className="pir-tabs">
-          {([
-            { id: 'pir', label: 'PIR Notes' },
-            { id: 'lessons', label: 'Lessons Learned' },
-            { id: 'closure', label: 'Closure Remarks' },
-            { id: 'downtime', label: 'Downtime' },
-          ] as { id: PirTab; label: string }[]).map(t => (
-            <button key={t.id} className={`pir-tab ${tab === t.id ? 'pir-tab--active' : ''}`} onClick={() => setTab(t.id)}>
+          {(
+            [
+              { id: 'pir', label: 'PIR Notes' },
+              { id: 'lessons', label: 'Lessons Learned' },
+              { id: 'closure', label: 'Closure Remarks' },
+              { id: 'downtime', label: 'Downtime' },
+            ] as { id: PirTab; label: string }[]
+          ).map((t) => (
+            <button
+              key={t.id}
+              className={`pir-tab ${tab === t.id ? 'pir-tab--active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
               {t.label}
             </button>
           ))}
@@ -222,12 +269,14 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
         <div className="pir-body">
           {tab === 'pir' && (
             <div className="ff-group">
-              <label className="ff-label">Post-Implementation Review Notes <span className="ff-required">*</span></label>
+              <label className="ff-label">
+                Post-Implementation Review Notes <span className="ff-required">*</span>
+              </label>
               <textarea
                 className="ff-input ff-textarea pir-textarea"
                 rows={12}
                 value={pirNotes}
-                onChange={e => setPirNotes(e.target.value)}
+                onChange={(e) => setPirNotes(e.target.value)}
                 placeholder="Document what happened during the change window, any issues encountered, and how they were resolved…"
               />
               {!pirNotes.trim() && <span className="ff-error">PIR Notes are required before saving.</span>}
@@ -240,7 +289,7 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
                 className="ff-input ff-textarea pir-textarea"
                 rows={12}
                 value={lessonsLearned}
-                onChange={e => setLessonsLearned(e.target.value)}
+                onChange={(e) => setLessonsLearned(e.target.value)}
                 placeholder="Document what went well, what could be improved, and recommendations for future changes…"
               />
             </div>
@@ -252,7 +301,7 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
                 className="ff-input ff-textarea pir-textarea"
                 rows={12}
                 value={closureRemarks}
-                onChange={e => setClosureRemarks(e.target.value)}
+                onChange={(e) => setClosureRemarks(e.target.value)}
                 placeholder="Final closure comments and sign-off notes…"
               />
             </div>
@@ -265,14 +314,16 @@ export default function PIRForm({ open, onClose, bridge, onUpdated, changeId }: 
                   type="number"
                   className="ff-input"
                   value={downtimeMinutes}
-                  onChange={e => setDowntimeMinutes(e.target.value)}
+                  onChange={(e) => setDowntimeMinutes(e.target.value)}
                   placeholder="Enter total downtime in minutes"
                   min={0}
                   max={10080}
                   aria-describedby="pir-downtime-hint"
                   style={{ maxWidth: 200 }}
                 />
-                <span id="pir-downtime-hint" className="ff-hint">Enter downtime in minutes (0–10,080 max / 7 days)</span>
+                <span id="pir-downtime-hint" className="ff-hint">
+                  Enter downtime in minutes (0–10,080 max / 7 days)
+                </span>
               </div>
               {downtimeMinutes && (
                 <div className="pir-downtime-display">

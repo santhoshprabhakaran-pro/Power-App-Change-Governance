@@ -15,6 +15,7 @@ import NotificationPanel from './components/NotificationPanel';
 import ToastContainer from './components/ui/Toast';
 import { useNotifications } from './hooks/useDataverse';
 import { ROLE_LABEL, EXTENDED_ROLE_LABEL, ROLES, EXTENDED_ROLES } from './utils/roles';
+import { usePermissions } from './hooks/usePermissions';
 import { initAppInsights, trackPageView, setUser } from './utils/appInsights';
 import { DeptAdminWorkspace } from './components/admin/DeptAdminWorkspace';
 
@@ -45,6 +46,7 @@ const PREFETCH_MAP: Partial<Record<string, () => Promise<unknown>>> = {
   'capacity-planning': () => import('./components/modules/CapacityPlanning'),
   'admin-dashboard': () => import('./components/admin/AdminDashboard'),
   tasks: () => import('./components/modules/TaskManager'),
+  gantt: () => import('./components/modules/GanttView'),
 };
 
 // Workspace components — lazy-loaded on first navigation to reduce initial bundle size
@@ -73,20 +75,31 @@ const SchedulingCalendar = lazy(() => import('./components/modules/SchedulingCal
 const CapacityPlanning = lazy(() => import('./components/modules/CapacityPlanning'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const TaskManager = lazy(() => import('./components/modules/TaskManager'));
+const GanttView = lazy(() => import('./components/modules/GanttView'));
 
 function WorkspaceLoadingFallback() {
   return (
     <div style={{ padding: 24, width: '100%' }} role="status" aria-label="Loading workspace…">
       <div className="skeleton" style={{ height: 48, borderRadius: 8, marginBottom: 16 }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 8 }} />)}
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="skeleton" style={{ height: 88, borderRadius: 8 }} />
+        ))}
       </div>
       <div className="skeleton" style={{ height: 320, borderRadius: 8 }} />
     </div>
   );
 }
 
-function WorkspacePage({ title, sub, variant }: { title: string; sub?: string; variant?: 'denied' | 'construction' | 'not-found' }) {
+function WorkspacePage({
+  title,
+  sub,
+  variant,
+}: {
+  title: string;
+  sub?: string;
+  variant?: 'denied' | 'construction' | 'not-found';
+}) {
   const { navigate, userProfile } = useApp();
   const roleCode = Number(userProfile?.cgmp_role ?? -1);
   const roleLabel = ROLE_LABEL[roleCode] ?? EXTENDED_ROLE_LABEL[roleCode] ?? 'Unknown';
@@ -94,7 +107,9 @@ function WorkspacePage({ title, sub, variant }: { title: string; sub?: string; v
   if (variant === 'denied') {
     return (
       <div className="workspace-placeholder workspace-placeholder--denied" role="alert">
-        <span aria-hidden="true" style={{ fontSize: 48 }}>🔒</span>
+        <span aria-hidden="true" style={{ fontSize: 48 }}>
+          🔒
+        </span>
         <h2>Access Denied</h2>
         <p>Your role does not have permission to access this workspace.</p>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -106,7 +121,9 @@ function WorkspacePage({ title, sub, variant }: { title: string; sub?: string; v
   if (variant === 'construction') {
     return (
       <div className="workspace-placeholder workspace-placeholder--construction">
-        <span aria-hidden="true" style={{ fontSize: 48 }}>🚧</span>
+        <span aria-hidden="true" style={{ fontSize: 48 }}>
+          🚧
+        </span>
         <h2>Coming Soon</h2>
         <p>This workspace is under development and will be available in a future update.</p>
       </div>
@@ -115,7 +132,9 @@ function WorkspacePage({ title, sub, variant }: { title: string; sub?: string; v
   if (variant === 'not-found') {
     return (
       <div className="workspace-placeholder workspace-placeholder--not-found">
-        <span aria-hidden="true" style={{ fontSize: 48 }}>🔍</span>
+        <span aria-hidden="true" style={{ fontSize: 48 }}>
+          🔍
+        </span>
         <h2>Page Not Found</h2>
         <p>The page you're looking for doesn't exist or has been moved.</p>
         <button className="btn btn--outline" onClick={() => navigate('dashboard')}>
@@ -127,7 +146,9 @@ function WorkspacePage({ title, sub, variant }: { title: string; sub?: string; v
   // Default fallback — no variant
   return (
     <div className="workspace-placeholder">
-      <span aria-hidden="true" style={{ fontSize: 48 }}>🔧</span>
+      <span aria-hidden="true" style={{ fontSize: 48 }}>
+        🔧
+      </span>
       <div className="workspace-placeholder__title">{title}</div>
       {sub != null && <div className="workspace-placeholder__sub">{sub}</div>}
     </div>
@@ -160,6 +181,7 @@ const ROUTES: Record<string, LazyExoticComponent<FC>> = {
   'capacity-planning': CapacityPlanning,
   'admin-dashboard': AdminDashboard,
   tasks: TaskManager,
+  gantt: GanttView,
 };
 
 const WORKSPACE_NAMES = {
@@ -188,6 +210,7 @@ const WORKSPACE_NAMES = {
   'capacity-planning': 'Capacity Planning',
   'admin-dashboard': 'Admin Dashboard',
   tasks: 'Task Manager',
+  gantt: 'Timeline',
 } as const;
 type WorkspaceName = keyof typeof WORKSPACE_NAMES;
 
@@ -213,10 +236,11 @@ const PAGE_LABELS: Record<string, { title: string; section: string }> = {
   'change-templates': { section: 'Admin', title: 'Change Templates' },
   'blackout-calendar': { section: 'Admin', title: 'Blackout Calendar' },
   'notification-rules': { section: 'Settings', title: 'Notification Rules' },
-  'scheduling': { section: 'Modules', title: 'Scheduling Calendar' },
+  scheduling: { section: 'Modules', title: 'Scheduling Calendar' },
   'capacity-planning': { section: 'Modules', title: 'Capacity Planning' },
   'admin-dashboard': { section: 'Admin', title: 'Admin Dashboard' },
-  'tasks': { section: 'Modules', title: 'Task Manager' },
+  tasks: { section: 'Modules', title: 'Task Manager' },
+  gantt: { section: 'Modules', title: 'Timeline' },
 };
 
 const SECTION_ROUTES: Record<string, string> = {
@@ -244,7 +268,14 @@ function Breadcrumb({ activePage }: { activePage: string }) {
       >
         {info.section}
       </button>
-      <svg className="breadcrumb__sep" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <svg
+        className="breadcrumb__sep"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
         <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
       </svg>
       <button
@@ -259,37 +290,44 @@ function Breadcrumb({ activePage }: { activePage: string }) {
   );
 }
 
-
 const VALID_ROLES = new Set<number>([...Object.values(ROLES), ...Object.values(EXTENDED_ROLES)]);
 
 function NoRolePage() {
   return (
     <div className="no-role-page">
       <div className="no-role-card">
-        <div className="no-role-icon" aria-hidden="true">🔒</div>
+        <div className="no-role-icon" aria-hidden="true">
+          🔒
+        </div>
         <h1 className="no-role-title">Access Restricted</h1>
-        <p className="no-role-lead">
-          You currently do not have permission to access this application.
-        </p>
+        <p className="no-role-lead">You currently do not have permission to access this application.</p>
         <p className="no-role-body">
-          Your account has been successfully authenticated; however, no security role has been
-          assigned to grant access to this application.
+          Your account has been successfully authenticated; however, no security role has been assigned to grant access
+          to this application.
         </p>
 
         <div className="no-role-steps">
           <div className="no-role-steps__title">What can you do next?</div>
           <ul className="no-role-steps__list">
-            <li><span className="no-role-steps__icon">📧</span> Contact your <strong>Supervisor or Cluster Lead</strong>.</li>
-            <li><span className="no-role-steps__icon">📝</span> Request the appropriate <strong>application access and security role assignment</strong>.</li>
-            <li><span className="no-role-steps__icon">⏱️</span> Once access is granted, please <strong>sign out and sign back in</strong> to continue.</li>
+            <li>
+              <span className="no-role-steps__icon">📧</span> Contact your <strong>Supervisor or Cluster Lead</strong>.
+            </li>
+            <li>
+              <span className="no-role-steps__icon">📝</span> Request the appropriate{' '}
+              <strong>application access and security role assignment</strong>.
+            </li>
+            <li>
+              <span className="no-role-steps__icon">⏱️</span> Once access is granted, please{' '}
+              <strong>sign out and sign back in</strong> to continue.
+            </li>
           </ul>
         </div>
 
         <div className="no-role-assist">
           <div className="no-role-assist__title">Need Assistance?</div>
           <p className="no-role-assist__body">
-            If you believe this is an error or you require urgent access, please reach out to your
-            designated <strong>support team</strong> or <strong>application administrator</strong>.
+            If you believe this is an error or you require urgent access, please reach out to your designated{' '}
+            <strong>support team</strong> or <strong>application administrator</strong>.
           </p>
         </div>
 
@@ -302,19 +340,49 @@ function NoRolePage() {
 }
 
 function AppContent() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 768
+  );
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(() => {
-    try { return localStorage.getItem('rp-collapsed') === '1'; } catch { return false; }
+    try {
+      return localStorage.getItem('rp-collapsed') === '1';
+    } catch {
+      return false;
+    }
   });
-  const { theme, toggleTheme, notificationPanelOpen, openNotificationPanel, closeNotificationPanel, activePage, navigate, userProfile, userLoading, currentUserName, currentUserUpn } = useApp();
+  const {
+    theme,
+    toggleTheme,
+    notificationPanelOpen,
+    openNotificationPanel,
+    closeNotificationPanel,
+    activePage,
+    navigate,
+    userProfile,
+    userLoading,
+    currentUserName,
+    currentUserUpn,
+  } = useApp();
+  const { isDeptAdmin } = usePermissions();
 
   /* Initialise App Insights once and track page views + user identity */
-  useEffect(() => { initAppInsights(); }, []);
-  useEffect(() => { if (currentUserUpn) setUser(currentUserUpn); }, [currentUserUpn]);
-  useEffect(() => { trackPageView(activePage); }, [activePage]);
-  const { notifications, loading: notifLoading, unreadCount, refresh: refreshNotifs } = useNotifications(userProfile?.cgmp_userprofileid);
-  const highPriorityUnread = useMemo(() =>
-    notifications.filter(n => !n.cgmp_isread && (n.cgmp_priority as unknown as number) === 100000000).length,
+  useEffect(() => {
+    initAppInsights();
+  }, []);
+  useEffect(() => {
+    if (currentUserUpn) setUser(currentUserUpn);
+  }, [currentUserUpn]);
+  useEffect(() => {
+    trackPageView(activePage);
+  }, [activePage]);
+  const {
+    notifications,
+    loading: notifLoading,
+    unreadCount,
+    refresh: refreshNotifs,
+  } = useNotifications(userProfile?.cgmp_userprofileid);
+  const highPriorityUnread = useMemo(
+    () => notifications.filter((n) => !n.cgmp_isread && (n.cgmp_priority as unknown as number) === 100000000).length,
     [notifications]
   );
 
@@ -338,36 +406,59 @@ function AppContent() {
     // DeptAdmin (100000007) has department-scoped visibility — route them to their
     // own workspace when they navigate to the admin dashboard, since the global
     // AdminDashboard restricts access to the full Admin role only.
-    if (Number(userProfile?.cgmp_role) === EXTENDED_ROLES.DeptAdmin && activePage === 'admin-dashboard') {
-      return <ErrorBoundary workspaceName="Department Admin Workspace"><DeptAdminWorkspace /></ErrorBoundary>;
+    if (isDeptAdmin && activePage === 'admin-dashboard') {
+      return (
+        <ErrorBoundary workspaceName="Department Admin Workspace">
+          <DeptAdminWorkspace />
+        </ErrorBoundary>
+      );
     }
     const Component = ROUTES[activePage];
-    if (!Component) return <WorkspacePage title="Page Not Found" sub="This section is not yet available" variant="not-found" />;
-    const name: string = activePage in WORKSPACE_NAMES
-      ? WORKSPACE_NAMES[activePage as WorkspaceName]
-      : activePage;
-    return <ErrorBoundary workspaceName={name}><Component /></ErrorBoundary>;
+    if (!Component)
+      return <WorkspacePage title="Page Not Found" sub="This section is not yet available" variant="not-found" />;
+    const name: string = activePage in WORKSPACE_NAMES ? WORKSPACE_NAMES[activePage as WorkspaceName] : activePage;
+    return (
+      <ErrorBoundary workspaceName={name}>
+        <Component />
+      </ErrorBoundary>
+    );
   }
 
   return (
     <div className="app">
       <OfflineBanner />
-      <a href="#main-content" className="skip-link">Skip to main content</a>
-      <a href="#right-panel" className="skip-link">Skip to right panel</a>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <a href="#right-panel" className="skip-link">
+        Skip to right panel
+      </a>
       <Header
         unreadCount={unreadCount}
         highPriorityUnread={highPriorityUnread}
         theme={theme}
         onThemeToggle={toggleTheme}
         onOpenNotificationPanel={openNotificationPanel}
-        onToggleSidebar={() => setSidebarCollapsed(c => !c)}
+        onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
         sidebarExpanded={!sidebarCollapsed}
         userName={currentUserName}
         userRole={userRole}
       />
       <div className="app-body">
         {!sidebarCollapsed && (
-          <div className="sidebar-overlay sidebar-overlay--visible" role="button" tabIndex={0} aria-label="Close sidebar" onClick={() => setSidebarCollapsed(true)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSidebarCollapsed(true); } }} />
+          <div
+            className="sidebar-overlay sidebar-overlay--visible"
+            role="button"
+            tabIndex={0}
+            aria-label="Close sidebar"
+            onClick={() => setSidebarCollapsed(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSidebarCollapsed(true);
+              }
+            }}
+          />
         )}
         <Sidebar
           activePage={activePage}
@@ -376,22 +467,24 @@ function AppContent() {
             if (window.innerWidth <= 768) setSidebarCollapsed(true);
           }}
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(c => !c)}
+          onToggle={() => setSidebarCollapsed((c) => !c)}
           unreadCount={unreadCount}
-          onPrefetch={(page) => { void PREFETCH_MAP[page]?.(); }}
+          onPrefetch={(page) => {
+            void PREFETCH_MAP[page]?.();
+          }}
         />
         <main id="main-content" className="main-content">
           <Breadcrumb activePage={activePage} />
-          <Suspense fallback={<WorkspaceLoadingFallback />}>
-            {renderContent()}
-          </Suspense>
+          <Suspense fallback={<WorkspaceLoadingFallback />}>{renderContent()}</Suspense>
         </main>
         <RightPanel
           collapsed={rightPanelCollapsed}
           onToggleCollapse={() => {
-            setRightPanelCollapsed(c => {
+            setRightPanelCollapsed((c) => {
               const next = !c;
-              try { localStorage.setItem('rp-collapsed', next ? '1' : '0'); } catch {}
+              try {
+                localStorage.setItem('rp-collapsed', next ? '1' : '0');
+              } catch {}
               return next;
             });
           }}
